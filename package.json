@@ -8,6 +8,7 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "android-run": "ionic capacitor run android --livereload --external --consolelogs --serverlogs --open",
     "test": "ng test",
     "lint": "ng lint"
   },
@@ -21,6 +22,7 @@
     "@angular/platform-browser": "^20.0.0",
     "@angular/platform-browser-dynamic": "^20.0.0",
     "@angular/router": "^20.0.0",
+    "@capacitor/android": "7.4.3",
     "@capacitor/app": "7.1.0",
     "@capacitor/core": "7.4.3",
     "@capacitor/haptics": "7.0.2",
@@ -47,6 +49,7 @@
     "@types/jasmine": "~5.1.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
+    "autoprefixer": "^10.4.21",
     "eslint": "^9.16.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jsdoc": "^48.2.1",
@@ -58,6 +61,8 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
     "typescript": "~5.8.0"
   },
   "description": "An Ionic project"

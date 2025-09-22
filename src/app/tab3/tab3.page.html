@@ -1,17 +1,78 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Tab 3
-    </ion-title>
+    <ion-title>Summary</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 3</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content [fullscreen]="true" class="p-4">
+  <div class="space-y-6">
+    <div>
+      <div class="text-sm font-semibold mb-2">Include expenses</div>
+      <ion-item *ngIf="allExpenses.length; else noExpensesTpl">
+        <ion-label>Selected</ion-label>
+        <ion-select
+          multiple="true"
+          interface="popover"
+          placeholder="Choose expenses"
+          [value]="selectedExpenseIds"
+          (ionChange)="onSelectChange($event.detail.value)"
+        >
+          <ion-select-option *ngFor="let e of allExpenses" [value]="e.id">
+            {{ e.description }} — {{ e.amount | number:'1.2-2' }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+      <ng-template #noExpensesTpl>
+        <div class="text-center text-sm text-gray-500 py-6">
+          No expenses to choose yet.
+        </div>
+      </ng-template>
+    </div>
 
-  <app-explore-container name="Tab 3 page"></app-explore-container>
+    <div>
+      <div class="text-sm font-semibold mb-2">Balances</div>
+      <ion-list *ngIf="balances.length; else nobal">
+        <ion-item *ngFor="let b of balances">
+          <ion-label>
+            <div class="font-medium">{{ nameOf(b.participantId) }}</div>
+            <div class="text-xs text-gray-500">
+              Paid: {{ b.paidTotal | number:'1.2-2' }} • Owes: {{ b.owedTotal |
+              number:'1.2-2' }}
+            </div>
+          </ion-label>
+          <div class="text-right" slot="end">
+            <div [class]="b.net>=0 ? 'text-green-600' : 'text-red-600'">
+              {{ b.net | number:'1.2-2' }}
+            </div>
+          </div>
+        </ion-item>
+      </ion-list>
+      <ng-template #nobal>
+        <div class="text-center text-sm text-gray-500 py-6">
+          No balances yet.
+        </div>
+      </ng-template>
+    </div>
+
+    <div>
+      <div class="text-sm font-semibold mb-2">Settlement suggestions</div>
+      <ion-list *ngIf="settlements.length; else noset">
+        <ion-item *ngFor="let s of settlements">
+          <ion-label>{{ nameOf(s.from) }} pays {{ nameOf(s.to) }}</ion-label>
+          <div class="font-medium" slot="end">
+            {{ s.amount | number:'1.2-2' }}
+          </div>
+        </ion-item>
+      </ion-list>
+      <ng-template #noset>
+        <div class="text-center text-sm text-gray-500 py-6">
+          All settled up 🎉
+        </div>
+      </ng-template>
+    </div>
+
+    <ion-button expand="block" color="medium" (click)="refresh()"
+      >Recalculate</ion-button
+    >
+  </div>
 </ion-content>

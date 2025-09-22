@@ -1,17 +1,89 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Tab 2
-    </ion-title>
+    <ion-title>Expenses</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 2</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content [fullscreen]="true" class="p-4">
+  <div class="space-y-4">
+    <ion-item>
+      <ion-label position="stacked">Description</ion-label>
+      <ion-input
+        placeholder="e.g. Dinner"
+        [(ngModel)]="description"
+      ></ion-input>
+    </ion-item>
 
-  <app-explore-container name="Tab 2 page"></app-explore-container>
+    <ion-item>
+      <ion-label position="stacked">Amount</ion-label>
+      <ion-input
+        type="number"
+        inputmode="decimal"
+        placeholder="0.00"
+        [(ngModel)]="amount"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label>Paid by</ion-label>
+      <ion-select
+        [(ngModel)]="paidBy"
+        interface="popover"
+        placeholder="Select payer"
+      >
+        <ion-select-option *ngFor="let p of participants" [value]="p.id"
+          >{{ p.name }}</ion-select-option
+        >
+      </ion-select>
+    </ion-item>
+
+    <div>
+      <div class="text-xs font-medium mb-2">Split with</div>
+      <ion-list>
+        <ion-item *ngFor="let p of participants">
+          <ion-label>{{ p.name }}</ion-label>
+          <ion-checkbox
+            slot="end"
+            [checked]="!!splitWith[p.id]"
+            (ionChange)="toggleShare(p.id, $event.detail.checked)"
+          ></ion-checkbox>
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <ion-button
+      expand="block"
+      (click)="addExpense()"
+      [disabled]="!description.trim() || !paidBy || !(+amount>0)"
+      >Add Expense</ion-button
+    >
+
+    <div>
+      <div class="text-sm font-semibold mb-2">Recent expenses</div>
+      <ion-list *ngIf="expenses.length; else noexp">
+        <ion-item *ngFor="let e of expenses">
+          <ion-label>
+            <div class="font-medium">
+              {{ e.description }} - {{ e.amount | number:'1.2-2' }}
+            </div>
+            <div class="text-xs text-gray-500">
+              {{ e.createdAt | date:'short' }}
+            </div>
+          </ion-label>
+          <ion-button
+            fill="clear"
+            color="danger"
+            slot="end"
+            (click)="removeExpense(e.id)"
+            >Remove</ion-button
+          >
+        </ion-item>
+      </ion-list>
+      <ng-template #noexp>
+        <div class="text-center text-sm text-gray-500 py-6">
+          No expenses yet.
+        </div>
+      </ng-template>
+    </div>
+  </div>
 </ion-content>

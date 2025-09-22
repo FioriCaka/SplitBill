@@ -1,17 +1,35 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-title>
-      Tab 1
-    </ion-title>
+    <ion-title>Participants</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 1</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content [fullscreen]="true" class="p-4">
+  <div class="space-y-4">
+    <div class="flex gap-2 items-end">
+      <ion-item class="flex-1">
+        <ion-label position="stacked">Name</ion-label>
+        <ion-input placeholder="e.g. Alice" [(ngModel)]="name"></ion-input>
+      </ion-item>
+      <ion-button (click)="add()" [disabled]="!name.trim()">Add</ion-button>
+    </div>
 
-  <app-explore-container name="Tab 1 page"></app-explore-container>
+    <ion-list *ngIf="participants.length; else empty">
+      <ion-item *ngFor="let p of participants">
+        <ion-label>{{ p.name }}</ion-label>
+        <ion-button
+          fill="clear"
+          color="danger"
+          slot="end"
+          (click)="remove(p.id)"
+          >Remove</ion-button
+        >
+      </ion-item>
+    </ion-list>
+    <ng-template #empty>
+      <div class="text-center text-sm text-gray-500 py-8">
+        No participants yet. Add some to get started.
+      </div>
+    </ng-template>
+  </div>
 </ion-content>
