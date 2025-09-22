@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
+import { authGuard } from '../core/auth.guard';
 import { TabsPage } from './tabs.page';
 
 export const routes: Routes = [
   {
     path: 'tabs',
     component: TabsPage,
+    canMatch: [authGuard],
     children: [
       {
         path: 'tab1',
@@ -22,20 +24,21 @@ export const routes: Routes = [
           import('../tab3/tab3.page').then((m) => m.Tab3Page),
       },
       {
-        path: 'tw-demo',
+        path: 'profile',
         loadComponent: () =>
-          import('../tw-demo/tw-demo.page').then((m) => m.TwDemoPage),
+          import('../profile-page/profile-page').then((m) => m.ProfilePage),
       },
+
       {
         path: '',
-        redirectTo: '/tabs/tab1',
+        redirectTo: '/tabs/tab3',
         pathMatch: 'full',
       },
     ],
   },
   {
     path: '',
-    redirectTo: '/tabs/tab1',
+    redirectTo: '/tabs/tab3',
     pathMatch: 'full',
   },
 ];

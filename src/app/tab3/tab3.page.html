@@ -6,6 +6,48 @@
 
 <ion-content [fullscreen]="true" class="p-4">
   <div class="space-y-6">
+    <div
+      *ngIf="invites.length"
+      class="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm"
+    >
+      <div class="font-medium mb-2">Invitations</div>
+      <ion-list>
+        <ion-item *ngFor="let inv of invites">
+          <ion-label>Group invite for {{ inv.email }}</ion-label>
+          <ion-button
+            size="small"
+            color="success"
+            (click)="acceptInvite(inv)"
+            slot="end"
+            >Accept</ion-button
+          >
+          <ion-button
+            size="small"
+            color="medium"
+            (click)="declineInvite(inv)"
+            slot="end"
+            >Decline</ion-button
+          >
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <div>
+      <div class="text-sm font-semibold mb-2">Filter by group</div>
+      <ion-item>
+        <ion-label>Group</ion-label>
+        <ion-select
+          placeholder="All groups"
+          [value]="selectedGroupId || undefined"
+          (ionChange)="onSelectGroup($event.detail.value)"
+        >
+          <ion-select-option [value]="undefined">All</ion-select-option>
+          <ion-select-option *ngFor="let g of groups" [value]="g.id"
+            >{{ g.name }}</ion-select-option
+          >
+        </ion-select>
+      </ion-item>
+    </div>
     <div>
       <div class="text-sm font-semibold mb-2">Include expenses</div>
       <ion-item *ngIf="allExpenses.length; else noExpensesTpl">

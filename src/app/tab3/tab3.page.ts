@@ -11,7 +11,6 @@ import {
   IonButton,
   IonSelect,
   IonSelectOption,
-  IonCheckbox,
 } from '@ionic/angular/standalone';
 import { SplitBillService } from '../core/splitbill.service';
 import {
@@ -19,6 +18,8 @@ import {
   SettlementSuggestion,
   Participant,
   Expense,
+  Group,
+  Invite,
 } from '../core/models';
 
 @Component({
@@ -26,7 +27,6 @@ import {
   templateUrl: 'tab3.page.html',
   styleUrls: ['tab3.page.scss'],
   imports: [
-    IonCheckbox,
     CommonModule,
     IonHeader,
     IonToolbar,
@@ -46,6 +46,9 @@ export class Tab3Page {
   participants: Record<string, Participant | undefined> = {};
   allExpenses: Expense[] = [];
   selectedExpenseIds: string[] = [];
+  groups: Group[] = [];
+  selectedGroupId: string | '' = '';
+  invites: Invite[] = [];
 
   constructor(private sb: SplitBillService) {
     this.refresh();
@@ -59,16 +62,22 @@ export class Tab3Page {
 
   refresh() {
     this.mapParticipants();
-    this.allExpenses = this.sb.listExpenses();
+    this.groups = this.sb.listGroupsForCurrentUser();
+    this.invites = this.sb.listPendingInvitesForCurrentUser();
+    const base = this.selectedGroupId
+      ? this.sb.listExpensesForGroup(this.selectedGroupId)
+      : this.sb.listExpenses();
+    this.allExpenses = base;
     const selectedIds = this.selectedExpenseIds.filter((id) =>
-      this.allExpenses.some((e) => e.id === id)
+      base.some((e) => e.id === id)
     );
     if (selectedIds.length) {
       this.balances = this.sb.balancesFor(selectedIds);
       this.settlements = this.sb.settlementFor(selectedIds);
     } else {
-      this.balances = this.sb.balances();
-      this.settlements = this.sb.settlement();
+      const allIds = base.map((e) => e.id);
+      this.balances = this.sb.balancesFor(allIds);
+      this.settlements = this.sb.settlementFor(allIds);
     }
   }
 
@@ -83,6 +92,24 @@ export class Tab3Page {
 
   onSelectChange(ids: string[] | undefined) {
     this.selectedExpenseIds = Array.isArray(ids) ? ids : [];
+    this.refresh();
+  }
+
+  onSelectGroup(id: string | undefined) {
+    this.selectedGroupId = id || '';
+    this.selectedExpenseIds = [];
+    this.refresh();
+  }
+
+  acceptInvite(inv: Invite) {
+    const p = this.sb.getCurrentParticipant();
+    if (!p) return;
+    this.sb.respondInvite(inv.id, true, p.id);
+    this.refresh();
+  }
+
+  declineInvite(inv: Invite) {
+    this.sb.respondInvite(inv.id, false);
     this.refresh();
   }
 }

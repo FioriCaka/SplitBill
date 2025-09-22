@@ -1,0 +1,22 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Profile</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="p-6 space-y-4">
+    <div class="text-xl font-semibold">Account</div>
+    <div class="p-4 rounded bg-gray-50">
+      <div>
+        Name: <span class="font-medium">{{ user?.name || 'Guest' }}</span>
+      </div>
+      <div>
+        Email: <span class="font-medium">{{ user?.email || '-' }}</span>
+      </div>
+    </div>
+    <ion-button expand="block" color="medium" (click)="logout()" *ngIf="user"
+      >Log out</ion-button
+    >
+  </div>
+</ion-content>

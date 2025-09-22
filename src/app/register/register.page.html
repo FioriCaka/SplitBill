@@ -1,0 +1,39 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Register</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="p-4">
+  <div class="space-y-4">
+    <ion-item>
+      <ion-label position="stacked">Name</ion-label>
+      <ion-input [(ngModel)]="name" placeholder="Your name"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Email</ion-label>
+      <ion-input [(ngModel)]="email" placeholder="you@example.com"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Password</ion-label>
+      <ion-input
+        type="password"
+        [(ngModel)]="password"
+        placeholder="••••••••"
+      ></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Confirm Password</ion-label>
+      <ion-input
+        type="password"
+        [(ngModel)]="confirmPassword"
+        placeholder="••••••••"
+      ></ion-input>
+    </ion-item>
+    <ion-button
+      expand="block"
+      (click)="register()"
+      [disabled]="!name.trim() || !email.trim() || !password || password !== confirmPassword"
+      >Create Account</ion-button
+    >
+  </div>
+</ion-content>

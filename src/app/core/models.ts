@@ -3,6 +3,7 @@ export type UUID = string;
 export interface Participant {
   id: UUID;
   name: string;
+  email?: string;
 }
 
 export interface Expense {
@@ -12,11 +13,14 @@ export interface Expense {
   paidBy: UUID; // participant id
   splitWith: UUID[]; // participants sharing this expense
   createdAt: string; // ISO date
+  groupId?: UUID; // optional group association
 }
 
 export interface State {
   participants: Participant[];
   expenses: Expense[];
+  groups?: Group[];
+  invites?: Invite[];
 }
 
 export interface BalanceLine {
@@ -30,4 +34,27 @@ export interface SettlementSuggestion {
   from: UUID;
   to: UUID;
   amount: number;
+}
+
+export interface User {
+  id: UUID;
+  name: string;
+  email: string;
+}
+
+export interface Group {
+  id: UUID;
+  name: string;
+  memberIds: UUID[]; // participant ids
+  createdAt: string;
+}
+
+export type InviteStatus = 'pending' | 'accepted' | 'declined';
+export interface Invite {
+  id: UUID;
+  email: string; // invite target email
+  groupId: UUID;
+  invitedByParticipantId: UUID;
+  status: InviteStatus;
+  createdAt: string;
 }

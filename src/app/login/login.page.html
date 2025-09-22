@@ -1,0 +1,27 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Login</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="p-4">
+  <div class="space-y-4">
+    <ion-item>
+      <ion-label position="stacked">Name</ion-label>
+      <ion-input [(ngModel)]="name" placeholder="Your name"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Email</ion-label>
+      <ion-input [(ngModel)]="email" placeholder="you@example.com"></ion-input>
+    </ion-item>
+    <ion-button
+      expand="block"
+      (click)="login()"
+      [disabled]="!name.trim() || !email.trim()"
+      >Continue</ion-button
+    >
+    <div class="text-center text-sm text-gray-500">
+      Don't have an account?
+      <a routerLink="/register" class="text-primary-600">Register</a>
+    </div>
+  </div>
+</ion-content>

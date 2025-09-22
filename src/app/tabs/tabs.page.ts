@@ -7,7 +7,7 @@ import {
   IonLabel,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { colorPalette, people, cash, statsChart } from 'ionicons/icons';
+import { colorPalette, people, cash, statsChart, person } from 'ionicons/icons';
 
 @Component({
   selector: 'app-tabs',
@@ -19,6 +19,6 @@ export class TabsPage {
   public environmentInjector = inject(EnvironmentInjector);
 
   constructor() {
-    addIcons({ people, cash, statsChart, colorPalette });
+    addIcons({ people, cash, statsChart, person });
   }
 }

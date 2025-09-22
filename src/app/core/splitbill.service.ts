@@ -6,6 +6,9 @@ import {
   UUID,
   BalanceLine,
   SettlementSuggestion,
+  Group,
+  Invite,
+  User,
 } from './models';
 
 const STORAGE_KEY = 'splitbill:v1';
@@ -41,7 +44,13 @@ function uuid(): UUID {
 
 @Injectable({ providedIn: 'root' })
 export class SplitBillService {
-  private state: State = { participants: [], expenses: [] };
+  private state: State = {
+    participants: [],
+    expenses: [],
+    groups: [],
+    invites: [],
+  };
+  private currentUser: User | null = null;
 
   constructor() {
     this.load();
@@ -57,22 +66,77 @@ export class SplitBillService {
       try {
         this.state = JSON.parse(raw);
       } catch {
-        this.state = { participants: [], expenses: [] };
+        this.state = {
+          participants: [],
+          expenses: [],
+          groups: [],
+          invites: [],
+        };
       }
     }
+    const uraw = localStorage.getItem(STORAGE_KEY + ':user');
+    if (uraw)
+      try {
+        this.currentUser = JSON.parse(uraw);
+      } catch {}
   }
 
   reset() {
-    this.state = { participants: [], expenses: [] };
+    this.state = { participants: [], expenses: [], groups: [], invites: [] };
     this.save();
+  }
+
+  // Auth
+  getUser() {
+    return this.currentUser;
+  }
+  login(name: string, email: string) {
+    this.currentUser = { id: uuid(), name: name.trim(), email: email.trim() };
+    localStorage.setItem(
+      STORAGE_KEY + ':user',
+      JSON.stringify(this.currentUser)
+    );
+    const lower = this.currentUser.email.toLowerCase();
+    let p = this.state.participants.find(
+      (pp) => (pp.email || '').toLowerCase() === lower
+    );
+    if (!p) {
+      p = {
+        id: uuid(),
+        name: this.currentUser.name,
+        email: this.currentUser.email,
+      };
+      this.state.participants.push(p);
+      this.save();
+    }
+    return this.currentUser;
+  }
+  logout() {
+    this.currentUser = null;
+    localStorage.removeItem(STORAGE_KEY + ':user');
+  }
+
+  getParticipantByEmail(email: string) {
+    const e = email.trim().toLowerCase();
+    return this.state.participants.find(
+      (p) => (p.email || '').toLowerCase() === e
+    );
+  }
+  getCurrentParticipant() {
+    if (!this.currentUser) return undefined;
+    return this.getParticipantByEmail(this.currentUser.email);
   }
 
   // Participants
   listParticipants() {
     return [...this.state.participants];
   }
-  addParticipant(name: string) {
-    const p: Participant = { id: uuid(), name: name.trim() };
+  addParticipant(name: string, email?: string) {
+    const p: Participant = {
+      id: uuid(),
+      name: name.trim(),
+      email: email?.trim(),
+    };
     this.state.participants.push(p);
     this.save();
     return p;
@@ -225,5 +289,77 @@ export class SplitBillService {
       if (neg[j].net >= -0.005) j++;
     }
     return res;
+  }
+
+  // Groups
+  listGroups(): Group[] {
+    return [...(this.state.groups || [])];
+  }
+  listGroupsForParticipant(participantId: UUID): Group[] {
+    return this.listGroups().filter((g) => g.memberIds.includes(participantId));
+  }
+  listGroupsForCurrentUser(): Group[] {
+    const p = this.getCurrentParticipant();
+    return p ? this.listGroupsForParticipant(p.id) : [];
+  }
+  addGroup(name: string, memberIds: UUID[]) {
+    const g: Group = {
+      id: uuid(),
+      name: name.trim(),
+      memberIds: [...new Set(memberIds)],
+      createdAt: new Date().toISOString(),
+    };
+    this.state.groups!.push(g);
+    this.save();
+    return g;
+  }
+  addParticipantToGroup(groupId: UUID, participantId: UUID) {
+    const g = this.state.groups!.find((g) => g.id === groupId);
+    if (!g) return;
+    if (!g.memberIds.includes(participantId)) g.memberIds.push(participantId);
+    this.save();
+  }
+
+  // Invites
+  listInvites(): Invite[] {
+    return [...(this.state.invites || [])];
+  }
+  listPendingInvitesForCurrentUser(): Invite[] {
+    const u = this.getUser();
+    if (!u) return [];
+    const lower = u.email.toLowerCase();
+    return this.listInvites().filter(
+      (i) => i.status === 'pending' && i.email.toLowerCase() === lower
+    );
+  }
+  inviteToGroup(
+    groupId: UUID,
+    invitedEmail: string,
+    invitedByParticipantId: UUID
+  ) {
+    const inv: Invite = {
+      id: uuid(),
+      groupId,
+      email: invitedEmail.trim(),
+      invitedByParticipantId,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    this.state.invites!.push(inv);
+    this.save();
+    return inv;
+  }
+  respondInvite(inviteId: UUID, accept: boolean, participantId?: UUID) {
+    const inv = this.state.invites!.find((i) => i.id === inviteId);
+    if (!inv) return;
+    inv.status = accept ? 'accepted' : 'declined';
+    if (accept && participantId)
+      this.addParticipantToGroup(inv.groupId, participantId);
+    this.save();
+  }
+
+  // Group-scoped expenses
+  listExpensesForGroup(groupId: UUID): Expense[] {
+    return this.state.expenses.filter((e) => e.groupId === groupId);
   }
 }

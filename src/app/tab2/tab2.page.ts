@@ -16,7 +16,7 @@ import {
   IonCheckbox,
 } from '@ionic/angular/standalone';
 import { SplitBillService } from '../core/splitbill.service';
-import { Expense, Participant, UUID } from '../core/models';
+import { Expense, Participant, UUID, Group } from '../core/models';
 
 @Component({
   selector: 'app-tab2',
@@ -41,6 +41,9 @@ import { Expense, Participant, UUID } from '../core/models';
 })
 export class Tab2Page {
   participants: Participant[] = [];
+  availableParticipants: Participant[] = [];
+  groups: Group[] = [];
+  groupId: UUID | '' = '';
   expenses: Expense[] = [];
   description = '';
   amount: any = '';
@@ -53,9 +56,13 @@ export class Tab2Page {
 
   refresh() {
     this.participants = this.sb.listParticipants();
-    this.expenses = this.sb.listExpenses();
-    if (!this.paidBy && this.participants.length)
-      this.paidBy = this.participants[0].id;
+    this.groups = this.sb.listGroupsForCurrentUser();
+    this.expenses = this.groupId
+      ? this.sb.listExpensesForGroup(this.groupId)
+      : this.sb.listExpenses();
+    this.recomputeAvailableParticipants();
+    if (!this.paidBy && this.availableParticipants.length)
+      this.paidBy = this.availableParticipants[0].id;
   }
 
   ionViewWillEnter() {
@@ -64,6 +71,33 @@ export class Tab2Page {
 
   toggleShare(id: string, checked: boolean) {
     this.splitWith[id] = checked;
+  }
+
+  onSelectGroup(id: string) {
+    this.groupId = id as UUID;
+    this.refresh();
+  }
+
+  private recomputeAvailableParticipants() {
+    if (this.groupId) {
+      const g = this.groups.find((gg) => gg.id === this.groupId);
+      const memberSet = new Set(g ? g.memberIds : []);
+      this.availableParticipants = this.participants.filter((p) =>
+        memberSet.has(p.id)
+      );
+    } else {
+      this.availableParticipants = [...this.participants];
+    }
+    if (
+      this.paidBy &&
+      !this.availableParticipants.some((p) => p.id === this.paidBy)
+    ) {
+      this.paidBy = this.availableParticipants[0]?.id || '';
+    }
+    const allowed = new Set(this.availableParticipants.map((p) => p.id));
+    for (const key of Object.keys(this.splitWith)) {
+      if (!allowed.has(key)) delete this.splitWith[key];
+    }
   }
 
   addExpense() {
@@ -78,6 +112,7 @@ export class Tab2Page {
       amount: +amt.toFixed(2),
       paidBy: this.paidBy as string,
       splitWith: shareIds,
+      groupId: this.groupId || undefined,
     });
     this.description = '';
     this.amount = '';
