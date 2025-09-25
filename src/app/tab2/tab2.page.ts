@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -57,8 +57,9 @@ export class Tab2Page {
     'Entertainment',
     'Other',
   ];
+  private sb = inject(SplitBillService);
 
-  constructor(private sb: SplitBillService) {
+  constructor() {
     this.refresh();
   }
 
@@ -155,6 +156,14 @@ export class Tab2Page {
 
   removeExpense(id: string) {
     this.sb.removeExpense(id);
+    this.refresh();
+  }
+  resolveExpense(id: string) {
+    this.sb.resolveExpense(id as any);
+    this.refresh();
+  }
+  unresolveExpense(id: string) {
+    this.sb.unresolveExpense(id as any);
     this.refresh();
   }
 

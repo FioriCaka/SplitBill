@@ -10,15 +10,23 @@
     >
       <div class="flex items-center justify-between">
         <p class="font-mono">Balance: {{ currentBalance | currency }}</p>
+        @if (startingBalance !== null) {
         <ion-button size="small" (click)="openBalanceModal()"
           >Set Balance</ion-button
         >
+        }
       </div>
       <div class="text-xs text-gray-500 dark:text-gray-400">
         Starting: {{ startingBalance | currency }}
       </div>
       <div class="text-sm text-gray-600 dark:text-gray-300">
         Current vs Estimated
+      </div>
+      <div
+        *ngIf="unresolvedCount"
+        class="text-xs text-amber-600 dark:text-amber-400"
+      >
+        {{ unresolvedCount }} unresolved expense(s) not included until resolved.
       </div>
       <div class="h-56">
         <canvas #balanceChart></canvas>
@@ -54,30 +62,52 @@
           </div>
           <ion-item lines="full">
             <ion-label position="stacked">Name</ion-label>
-            <ion-input [(ngModel)]="name" placeholder="Your name"></ion-input>
+            <ion-input [(ngModel)]="name" placeholder="Your name">
+              <ion-icon
+                name="create-outline"
+                slot="end"
+                class="bg-white dark:bg-neutral-900"
+              ></ion-icon>
+            </ion-input>
           </ion-item>
           <ion-item lines="full">
             <ion-label position="stacked">Email</ion-label>
-            <ion-input
-              [(ngModel)]="email"
-              placeholder="you@example.com"
+            <ion-input [(ngModel)]="email" placeholder="you@example.com">
+              <ion-icon
+                name="create-outline"
+                slot="end"
+                class="bg-white dark:bg-neutral-900"
+              ></ion-icon
             ></ion-input>
           </ion-item>
-          <ion-item lines="full">
-            <ion-label position="stacked">Created At</ion-label>
-            <ion-input
-              [(ngModel)]="createdAt"
-              placeholder="{{ createdAt }}"
-              disabled
-            ></ion-input>
-          </ion-item>
+
           <ion-item lines="full">
             <ion-label position="stacked">Password</ion-label>
             <ion-input
+              id="passwordInput"
               type="password"
               [(ngModel)]="password"
               placeholder="Leave blank to keep current"
-            ></ion-input>
+              class="flex align-middle"
+            >
+              @if (password) {
+              <ion-icon
+                id="togglePasswordIcon"
+                name="eye-outline"
+                slot="end"
+                class="bg-white dark:bg-neutral-900 w-5 h-5 pb-3 pr-0"
+                (click)="togglePasswordVisibility()"
+              ></ion-icon>
+              } @else {
+              <ion-icon
+                id="togglePasswordIcon"
+                name="eye-off-outline"
+                slot="end"
+                class="bg-white dark:bg-neutral-900 w-5 h-5 pb-3 pr-0"
+                (click)="togglePasswordVisibility()"
+              ></ion-icon>
+              }
+            </ion-input>
           </ion-item>
           <ion-button
             expand="block"
@@ -102,7 +132,7 @@
   <ion-modal
     [isOpen]="balanceModalOpen"
     (didDismiss)="closeBalanceModal()"
-    class="wallet-modal pt-56 pb-96 px-16"
+    class="wallet-modal pt-56 pb-96 px-16 backdrop-blur-[1px]"
   >
     <ng-template>
       <div class="p-4 dark:bg-neutral-900 dark:text-slate-100">

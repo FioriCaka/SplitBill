@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
+import { resolveApiBaseUrl } from './api-base-url';
 import { Observable, tap } from 'rxjs';
 
 type LoginResponse = {
@@ -18,7 +19,10 @@ type LoginResponse = {
 export class AuthService {
   private http = inject(HttpClient);
   // Backend base URL (from environment)
-  private baseUrl = environment.apiBaseUrl;
+  private baseUrl =
+    environment.apiBaseUrl === '__DYNAMIC__'
+      ? resolveApiBaseUrl()
+      : environment.apiBaseUrl;
 
   get apiBaseUrl(): string {
     return this.baseUrl;

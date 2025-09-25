@@ -4,6 +4,7 @@ import {
   ViewChild,
   AfterViewInit,
   OnDestroy,
+  inject,
 } from '@angular/core';
 import {
   IonContent,
@@ -14,6 +15,7 @@ import {
   IonModal,
   IonAccordion,
   IonAccordionGroup,
+  IonIcon,
 } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,7 +23,8 @@ import { SplitBillService } from '../core/splitbill.service';
 import { BackendApiService } from '../core/backend.service';
 import { AuthService } from '../core/auth.service';
 import { Router } from '@angular/router';
-
+import { addIcons } from 'ionicons';
+import { createOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -36,6 +39,7 @@ import { Router } from '@angular/router';
     IonModal,
     IonAccordion,
     IonAccordionGroup,
+    IonIcon,
   ],
   templateUrl: './profile-page.html',
   styleUrls: ['./profile-page.scss'],
@@ -48,20 +52,22 @@ export class ProfilePage implements AfterViewInit, OnDestroy {
   private imageBase64: string | null = null;
   startingBalance = 0;
   currentBalance = 0;
+  unresolvedCount = 0; // number of unresolved expenses not yet reflected
   balanceModalOpen = false;
   startingBalanceInput: any = '';
   @ViewChild('balanceChart', { static: false })
   balanceChartRef?: ElementRef<HTMLCanvasElement>;
   private balanceChart?: any;
 
-  constructor(
-    private sb: SplitBillService,
-    private router: Router,
-    private api: BackendApiService,
-    private auth: AuthService
-  ) {}
+  private sb = inject(SplitBillService);
+  private router = inject(Router);
+  private api = inject(BackendApiService);
+  private auth = inject(AuthService);
   get user() {
     return this.sb.getUser();
+  }
+  constructor() {
+    addIcons({ createOutline, eyeOutline, eyeOffOutline });
   }
   async ionViewWillEnter() {
     const u = this.sb.getUser();
@@ -161,7 +167,9 @@ export class ProfilePage implements AfterViewInit, OnDestroy {
 
   private updateChart() {
     const p = this.sb.getCurrentParticipant();
-    const expenses = this.sb.listExpenses();
+    const all = this.sb.listExpenses();
+    const expenses = all.filter((e) => e.resolved); // ONLY resolved affect balance chart
+    this.unresolvedCount = all.filter((e) => !e.resolved).length;
     const byDate = new Map<string, number>();
     if (p) {
       for (const e of expenses) {
@@ -254,6 +262,20 @@ export class ProfilePage implements AfterViewInit, OnDestroy {
         },
       });
     });
+  }
+  togglePasswordVisibility() {
+    const passwordInput = document.getElementById(
+      'passwordInput'
+    ) as HTMLInputElement;
+    const toggleIcon = document.getElementById(
+      'togglePasswordIcon'
+    ) as HTMLIonIconElement;
+    if (passwordInput && toggleIcon) {
+      passwordInput.type =
+        passwordInput.type === 'password' ? 'text' : 'password';
+      toggleIcon.name =
+        passwordInput.type === 'password' ? 'eye-off-outline' : 'eye-outline';
+    }
   }
 
   ngAfterViewInit(): void {

@@ -162,6 +162,16 @@
       class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
     >
       <div class="text-sm font-semibold mb-2">Balances</div>
+      <div
+        *ngIf="unresolvedExpenses.length"
+        class="mb-3 text-xs text-amber-600 dark:text-amber-400 flex items-start gap-2"
+      >
+        <span class="inline-block mt-0.5">⚠️</span>
+        <span
+          >{{ unresolvedExpenses.length }} unresolved expense(s) not yet
+          counted. Resolve them to update balances.</span
+        >
+      </div>
       <ion-list
         *ngIf="balances.length; else nobal"
         class="rounded-md overflow-hidden dark:bg-transparent"
@@ -169,10 +179,17 @@
         <ion-item *ngFor="let b of balances">
           <ion-label>
             <div class="font-medium">{{ nameOf(b.participantId) }}</div>
+            @if (b.net >= 0) {
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Paid: {{ b.paidTotal | number:'1.2-2' }} • Is Owed: {{ b.owedTotal
+              | number:'1.2-2' }}
+            </div>
+            } @else {
             <div class="text-xs text-gray-500 dark:text-gray-400">
               Paid: {{ b.paidTotal | number:'1.2-2' }} • Owes: {{ b.owedTotal |
               number:'1.2-2' }}
             </div>
+            }
           </ion-label>
           <div class="text-right" slot="end">
             <div

@@ -24,6 +24,9 @@ export interface Expense {
   // Optional metadata
   date?: string; // ISO date of the expense itself
   category?: string; // e.g., Food, Travel, Rent
+  // Resolution status
+  resolved?: boolean; // true when expense has been settled/cleared
+  resolvedAt?: string; // ISO timestamp when marked resolved
 }
 
 export interface State {

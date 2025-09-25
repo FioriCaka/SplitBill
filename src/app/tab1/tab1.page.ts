@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   IonContent,
@@ -41,8 +41,9 @@ export class Tab1Page {
   newGroupName = '';
   inviteEmail = '';
   pendingInvites: Invite[] = [];
+  private sb = inject(SplitBillService);
 
-  constructor(private sb: SplitBillService) {
+  constructor() {
     this.refresh();
   }
 

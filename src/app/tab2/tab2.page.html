@@ -133,26 +133,56 @@
     </div>
 
     <div
-      class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 dark:text-slate-100"
+      class="rounded-xl bg-white dark:bg-neutral-900 shadow p-2 dark:text-slate-100"
     >
       <div class="text-sm font-semibold mb-2">Recent expenses</div>
       <ion-list
         *ngIf="expenses.length; else noexp"
         class="rounded-md overflow-hidden dark:bg-transparent"
       >
-        <ion-item *ngFor="let e of expenses">
+        <ion-item
+          *ngFor="let e of expenses"
+          class="w-full"
+          [class.opacity-60]="e.resolved"
+        >
           <ion-label>
-            <div class="font-medium">
+            <div class="font-medium" [class.line-through]="e.resolved">
               {{ e.description }} - {{ e.amount | number:'1.2-2' }}
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
               {{ e.createdAt | date:'short' }}
+              <span
+                *ngIf="e.resolved"
+                class="ml-2 text-green-600 dark:text-green-400"
+                >(resolved)</span
+              >
             </div>
           </ion-label>
+          <ion-button
+            *ngIf="!e.resolved"
+            fill="clear"
+            color="success"
+            slot="end"
+            class="m-0"
+            (click)="resolveExpense(e.id)"
+          >
+            Resolve
+          </ion-button>
+          <ion-button
+            *ngIf="e.resolved"
+            fill="clear"
+            color="medium"
+            slot="end"
+            class="m-0"
+            (click)="unresolveExpense(e.id)"
+          >
+            Unresolve
+          </ion-button>
           <ion-button
             fill="clear"
             color="danger"
             slot="end"
+            class="m-0"
             (click)="removeExpense(e.id)"
             >Remove</ion-button
           >

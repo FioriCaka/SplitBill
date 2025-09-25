@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -31,11 +31,9 @@ export class LoginPage {
   email = '';
   password = '';
   errorMsg = '';
-  constructor(
-    private sb: SplitBillService,
-    private auth: AuthService,
-    private router: Router
-  ) {}
+  private sb = inject(SplitBillService);
+  private auth = inject(AuthService);
+  private router = inject(Router);
   login() {
     if (!this.email.trim() || !this.password) return;
     this.auth.login(this.email, this.password).subscribe({
@@ -53,8 +51,14 @@ export class LoginPage {
       },
       error: (err) => {
         console.error('Login failed', err);
-        this.errorMsg =
-          err?.error?.message || 'Login failed. Check your credentials.';
+        if (err?.status === 0) {
+          // Status 0 typically means network unreachable / CORS preflight failed / server down
+          this.errorMsg =
+            'Cannot reach server. Verify API URL & that backend is running.';
+        } else {
+          this.errorMsg =
+            err?.error?.message || 'Login failed. Check your credentials.';
+        }
       },
     });
   }

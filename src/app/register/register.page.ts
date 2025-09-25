@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -32,11 +32,9 @@ export class RegisterPage {
   password = '';
   confirmPassword = '';
   errorMsg = '';
-  constructor(
-    private sb: SplitBillService,
-    private auth: AuthService,
-    private router: Router
-  ) {}
+  private sb = inject(SplitBillService);
+  private auth = inject(AuthService);
+  private router = inject(Router);
   register() {
     if (
       !this.name.trim() ||

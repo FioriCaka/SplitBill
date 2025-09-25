@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BackendApiService } from './backend.service';
+import { AuthService } from './auth.service';
 import { firstValueFrom } from 'rxjs';
 import {
   State,
@@ -47,6 +49,13 @@ function uuid(): UUID {
 @Injectable({ providedIn: 'root' })
 export class SplitBillService {
   private api = inject(BackendApiService);
+  private http = inject(HttpClient);
+  private auth = inject(AuthService);
+
+  private authHeader(): HttpHeaders {
+    const token = this.auth.token;
+    return new HttpHeaders(token ? { Authorization: `Bearer ${token}` } : {});
+  }
   private state: State = {
     participants: [],
     expenses: [],
@@ -315,22 +324,196 @@ export class SplitBillService {
   }
 
   // Expenses
-  listExpenses() {
-    return [...this.state.expenses];
+  listExpenses(includeResolved = true) {
+    return includeResolved
+      ? [...this.state.expenses]
+      : this.state.expenses.filter((e) => !e.resolved);
   }
   addExpense(e: Omit<Expense, 'id' | 'createdAt'>) {
     const ex: Expense = {
       ...e,
       id: uuid(),
       createdAt: new Date().toISOString(),
+      // Local-only marker so we avoid hitting backend resolve/unresolve until syncing implemented
+      // @ts-ignore
+      _localOnly: true,
     };
     this.state.expenses.push(ex);
     this.save();
+    // Attempt immediate backend sync if authenticated
+    try {
+      const base = this.auth?.apiBaseUrl;
+      const token = this.auth?.token;
+      if (base && token) {
+        const payload: any = {
+          client_id: ex.id,
+          description: ex.description,
+          amount: ex.amount,
+          group_id: (ex as any).groupId || ex.groupId || undefined,
+          date: (ex as any).date,
+          category: (ex as any).category,
+          split_mode: (ex as any).splitMode || ex.splitMode,
+        };
+        // Attempt to include participants & splits only if they look like backend user IDs (numeric) – otherwise backend will reject.
+        try {
+          const participantUserIds: any[] = [];
+          const paidByNumeric = Number.isFinite(+ex.paidBy)
+            ? +ex.paidBy
+            : undefined;
+          if (paidByNumeric) payload.paid_by_user_id = paidByNumeric;
+          // Collect unique participant ids from splitWith or splits
+          const candidateIds = new Set<string>();
+          (ex.splitWith || []).forEach((id) => candidateIds.add(id));
+          (ex.splits || []).forEach((s) => candidateIds.add(s.participantId));
+          for (const cid of candidateIds) {
+            if (Number.isFinite(+cid)) participantUserIds.push(+cid);
+          }
+          if (participantUserIds.length)
+            payload.participant_user_ids = participantUserIds;
+          if (ex.splits && ex.splits.length) {
+            const splitsPayload: any[] = [];
+            for (const s of ex.splits) {
+              if (!Number.isFinite(+s.participantId)) continue; // skip local-only participant ids
+              const row: any = { participant_user_id: +s.participantId };
+              if (typeof s.percentage === 'number')
+                row.percentage = s.percentage;
+              if (typeof s.amount === 'number') row.amount = s.amount;
+              splitsPayload.push(row);
+            }
+            if (splitsPayload.length) payload.splits = splitsPayload;
+          }
+        } catch {}
+        this.http
+          ?.post(`${base}/expenses`, payload, { headers: this.authHeader() })
+          .subscribe({
+            next: () => {
+              // Mark as synced
+              (ex as any)._localOnly = false;
+            },
+            error: () => {
+              // Leave as local; could enqueue retry later
+            },
+          });
+      }
+    } catch {}
     return ex;
+  }
+
+  private trySyncExpense(e: Expense) {
+    try {
+      if (!(e as any)._localOnly) return; // already synced
+      const base = this.auth?.apiBaseUrl;
+      const token = this.auth?.token;
+      if (!base || !token) return;
+      const payload: any = {
+        client_id: e.id,
+        description: e.description,
+        amount: e.amount,
+        group_id: (e as any).groupId || e.groupId || undefined,
+        date: (e as any).date,
+        category: (e as any).category,
+        split_mode: (e as any).splitMode || e.splitMode,
+      };
+      try {
+        const participantUserIds: any[] = [];
+        if (Number.isFinite(+e.paidBy)) payload.paid_by_user_id = +e.paidBy;
+        const candidateIds = new Set<string>();
+        (e.splitWith || []).forEach((id) => candidateIds.add(id));
+        (e.splits || []).forEach((s) => candidateIds.add(s.participantId));
+        for (const cid of candidateIds) {
+          if (Number.isFinite(+cid)) participantUserIds.push(+cid);
+        }
+        if (participantUserIds.length)
+          payload.participant_user_ids = participantUserIds;
+        if (e.splits && e.splits.length) {
+          const splitsPayload: any[] = [];
+          for (const s of e.splits) {
+            if (!Number.isFinite(+s.participantId)) continue;
+            const row: any = { participant_user_id: +s.participantId };
+            if (typeof s.percentage === 'number') row.percentage = s.percentage;
+            if (typeof s.amount === 'number') row.amount = s.amount;
+            splitsPayload.push(row);
+          }
+          if (splitsPayload.length) payload.splits = splitsPayload;
+        }
+      } catch {}
+      this.http
+        ?.post(`${base}/expenses`, payload, { headers: this.authHeader() })
+        .subscribe({
+          next: () => {
+            (e as any)._localOnly = false;
+          },
+          error: () => {
+            // swallow
+          },
+        });
+    } catch {}
   }
   removeExpense(id: UUID) {
     this.state.expenses = this.state.expenses.filter((e) => e.id !== id);
     this.save();
+  }
+  resolveExpense(id: UUID) {
+    const e = this.state.expenses.find((x) => x.id === id);
+    if (e && !e.resolved) {
+      // If local-only try to sync first then proceed
+      if ((e as any)._localOnly) {
+        this.trySyncExpense(e);
+      }
+      e.resolved = true;
+      e.resolvedAt = new Date().toISOString();
+      this.save();
+      // Attempt backend sync if token present AND expense previously synced (no _localOnly flag)
+      try {
+        const base = this.auth?.apiBaseUrl;
+        const token = this.auth?.token;
+        if (base && token && !(e as any)._localOnly) {
+          this.http
+            ?.patch(
+              `${base}/expenses/${id}/resolve`,
+              {},
+              {
+                headers: this.authHeader(),
+              }
+            )
+            .subscribe({
+              error: () => {
+                /* ignore errors for now */
+              },
+            });
+        }
+      } catch {}
+    }
+  }
+  unresolveExpense(id: UUID) {
+    const e = this.state.expenses.find((x) => x.id === id);
+    if (e && e.resolved) {
+      if ((e as any)._localOnly) {
+        this.trySyncExpense(e);
+      }
+      e.resolved = false;
+      e.resolvedAt = undefined;
+      this.save();
+      try {
+        const base = this.auth?.apiBaseUrl;
+        const token = this.auth?.token;
+        if (base && token && !(e as any)._localOnly) {
+          this.http
+            ?.patch(
+              `${base}/expenses/${id}/unresolve`,
+              {},
+              {
+                headers: this.authHeader(),
+              }
+            )
+            .subscribe({
+              error: () => {
+                /* ignore */
+              },
+            });
+        }
+      } catch {}
+    }
   }
 
   // Calculations
@@ -383,6 +566,7 @@ export class SplitBillService {
       });
     }
     for (const e of this.state.expenses) {
+      if (!e.resolved) continue; // ONLY count resolved expenses in balances
       const payer = map.get(e.paidBy);
       if (payer) payer.paidTotal += e.amount;
       const shares = this.computeShares(e, this.state.participants);
@@ -457,7 +641,9 @@ export class SplitBillService {
         net: 0,
       });
     }
-    const expenses = this.state.expenses.filter((e) => set.has(e.id));
+    const expenses = this.state.expenses.filter(
+      (e) => set.has(e.id) && e.resolved
+    );
     for (const e of expenses) {
       const payer = map.get(e.paidBy);
       if (payer) payer.paidTotal += e.amount;
@@ -476,6 +662,7 @@ export class SplitBillService {
   ledger(): SettlementSuggestion[] {
     const pair = new Map<string, number>(); // key: from->to
     for (const e of this.state.expenses) {
+      if (!e.resolved) continue; // ledger only from resolved expenses
       const shares = this.computeShares(e, this.state.participants);
       for (const [sid, owed] of shares) {
         if (sid === e.paidBy) continue;

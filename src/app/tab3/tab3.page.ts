@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
@@ -42,6 +42,7 @@ export class Tab3Page {
   settlements: SettlementSuggestion[] = [];
   participants: Record<string, Participant | undefined> = {};
   allExpenses: Expense[] = [];
+  unresolvedExpenses: Expense[] = [];
   selectedExpenseIds: string[] = [];
   groups: Group[] = [];
   selectedGroupId: string | '' = '';
@@ -56,8 +57,10 @@ export class Tab3Page {
     category?: string;
     groupName?: string;
   }> = [];
+  private sb = inject(SplitBillService);
+  private api = inject(BackendApiService);
 
-  constructor(private sb: SplitBillService, private api: BackendApiService) {
+  constructor() {
     this.refresh();
   }
 
@@ -73,14 +76,18 @@ export class Tab3Page {
     this.userName = u?.name || 'there';
     this.groups = this.sb.listGroupsForCurrentUser();
     this.invites = this.sb.listPendingInvitesForCurrentUser();
-    const base = this.selectedGroupId
+    const baseRaw = this.selectedGroupId
       ? this.sb.listExpensesForGroup(this.selectedGroupId)
       : this.sb.listExpenses();
-    this.allExpenses = base;
+    // Only resolved expenses contribute to balances now
+    const resolved = baseRaw.filter((e) => e.resolved);
+    const unresolved = baseRaw.filter((e) => !e.resolved);
+    this.allExpenses = resolved;
+    this.unresolvedExpenses = unresolved;
     const groupsById = Object.fromEntries(
       this.sb.listGroups().map((g) => [g.id, g])
     );
-    this.recent = [...base]
+    this.recent = [...resolved]
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       .slice(0, 5)
       .map((e) => ({
@@ -92,29 +99,45 @@ export class Tab3Page {
         groupName: e.groupId ? groupsById[e.groupId!]?.name : undefined,
       }));
     const selectedIds = this.selectedExpenseIds.filter((id) =>
-      base.some((e) => e.id === id)
+      resolved.some((e) => e.id === id)
     );
     if (selectedIds.length) {
       this.balances = this.sb.balancesFor(selectedIds);
       this.settlements = this.sb.settlementFor(selectedIds);
     } else if (this.selectedGroupId) {
-      this.api.getGroupBalances(this.selectedGroupId).subscribe((rows) => {
-        this.nameById = Object.fromEntries(rows.map((r) => [r.userId, r.name]));
-        this.balances = rows.map((r) => ({
-          participantId: r.userId,
-          paidTotal: r.balance >= 0 ? r.balance : 0,
-          owedTotal: r.balance < 0 ? -r.balance : 0,
-          net: +r.balance,
-        }));
-        this.settlements = [];
-      });
+      // Only call backend if the selectedGroupId matches an existing local group id
+      const valid = this.groups.some((g) => g.id === this.selectedGroupId);
+      if (valid) {
+        this.api.getGroupBalances(this.selectedGroupId).subscribe({
+          next: (rows) => {
+            this.nameById = Object.fromEntries(
+              rows.map((r) => [r.userId, r.name])
+            );
+            this.balances = rows.map((r) => ({
+              participantId: r.userId,
+              paidTotal: r.balance >= 0 ? r.balance : 0,
+              owedTotal: r.balance < 0 ? -r.balance : 0,
+              net: +r.balance,
+            }));
+            this.settlements = [];
+          },
+          error: () => {
+            // Fallback to local calc if backend 404s
+            const allIds = resolved.map((e) => e.id);
+            this.balances = this.sb.balancesFor(allIds);
+            this.settlements = this.sb.settlementFor(allIds);
+          },
+        });
+      } else {
+        const allIds = resolved.map((e) => e.id);
+        this.balances = this.sb.balancesFor(allIds);
+        this.settlements = this.sb.settlementFor(allIds);
+      }
     } else {
-      const allIds = base.map((e) => e.id);
+      const allIds = resolved.map((e) => e.id);
       this.balances = this.sb.balancesFor(allIds);
       this.settlements = this.sb.settlementFor(allIds);
     }
-
-    // Chart removed from dashboard
   }
 
   nameOf(id: string): string {
@@ -136,8 +159,6 @@ export class Tab3Page {
     this.selectedExpenseIds = [];
     this.refresh();
   }
-
-  // no-op: balance adjustments are handled from Profile page
 
   acceptInvite(inv: Invite) {
     const p = this.sb.getCurrentParticipant();

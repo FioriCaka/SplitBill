@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
+import { resolveApiBaseUrl } from './api-base-url';
 import { Observable, map } from 'rxjs';
 
 export type ApiBalance = {
@@ -18,7 +19,10 @@ export type Balance = {
 @Injectable({ providedIn: 'root' })
 export class BackendApiService {
   private http = inject(HttpClient);
-  private baseUrl = environment.apiBaseUrl;
+  private baseUrl =
+    environment.apiBaseUrl === '__DYNAMIC__'
+      ? resolveApiBaseUrl()
+      : environment.apiBaseUrl;
 
   getGroupBalances(groupId: string): Observable<Balance[]> {
     return this.http

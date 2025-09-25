@@ -4,8 +4,8 @@
 
 export const environment = {
   production: false,
-  // Use your PC's LAN IP so devices can reach the API
-  apiBaseUrl: 'http://192.168.0.126:8000/api',
+  // Placeholder; real value resolved at runtime by resolveApiBaseUrl()
+  apiBaseUrl: '__DYNAMIC__',
 };
 
 /*
