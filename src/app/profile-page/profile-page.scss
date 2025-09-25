@@ -1,4 +1,21 @@
-.tw-demo-local {
-  /* Example of local SCSS coexisting with Tailwind */
-  outline: none;
+.wallet-modal::part(content) {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.wallet-modal::part(backdrop) {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Inner container to match rounding */
+.wallet-modal .modal-wrapper,
+.wallet-modal .ion-overlay-wrapper {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Ensure inner panel respects rounding */
+.wallet-modal .p-4 {
+  border-radius: 16px;
 }

@@ -2,9 +2,6 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
   IonButton,
   IonInput,
@@ -25,9 +22,6 @@ import { Expense, Participant, UUID, Group } from '../core/models';
   imports: [
     CommonModule,
     FormsModule,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
     IonContent,
     IonButton,
     IonInput,
@@ -49,6 +43,20 @@ export class Tab2Page {
   amount: any = '';
   paidBy: UUID | '' = '';
   splitWith: Record<string, boolean> = {};
+  splitMode: 'equal' | 'percentage' | 'custom' = 'equal';
+  splitsInput: Record<string, number> = {};
+  date: string = '';
+  category: string = '';
+  categories = [
+    'General',
+    'Food',
+    'Travel',
+    'Rent',
+    'Utilities',
+    'Groceries',
+    'Entertainment',
+    'Other',
+  ];
 
   constructor(private sb: SplitBillService) {
     this.refresh();
@@ -63,6 +71,7 @@ export class Tab2Page {
     this.recomputeAvailableParticipants();
     if (!this.paidBy && this.availableParticipants.length)
       this.paidBy = this.availableParticipants[0].id;
+    if (!this.date) this.date = new Date().toISOString().slice(0, 10);
   }
 
   ionViewWillEnter() {
@@ -98,6 +107,9 @@ export class Tab2Page {
     for (const key of Object.keys(this.splitWith)) {
       if (!allowed.has(key)) delete this.splitWith[key];
     }
+    for (const key of Object.keys(this.splitsInput)) {
+      if (!allowed.has(key)) delete this.splitsInput[key];
+    }
   }
 
   addExpense() {
@@ -107,21 +119,69 @@ export class Tab2Page {
     const amt = parseFloat(this.amount);
     if (!this.description.trim() || !this.paidBy || !isFinite(amt) || amt <= 0)
       return;
-    this.sb.addExpense({
+    const payload: any = {
       description: this.description.trim(),
       amount: +amt.toFixed(2),
       paidBy: this.paidBy as string,
       splitWith: shareIds,
       groupId: this.groupId || undefined,
-    });
+      splitMode: this.splitMode,
+      category: this.category || undefined,
+      date: this.date || new Date().toISOString().slice(0, 10),
+    };
+    if (this.splitMode === 'percentage') {
+      const splits = shareIds.map((id) => ({
+        participantId: id,
+        percentage: +(this.splitsInput[id] || 0),
+      }));
+      payload.splits = splits;
+    } else if (this.splitMode === 'custom') {
+      const splits = shareIds.map((id) => ({
+        participantId: id,
+        amount: +parseFloat(String(this.splitsInput[id] || 0)).toFixed(2),
+      }));
+      payload.splits = splits;
+    }
+    this.sb.addExpense(payload);
     this.description = '';
     this.amount = '';
     this.splitWith = {};
+    this.splitsInput = {};
+    this.splitMode = 'equal';
+    this.date = new Date().toISOString().slice(0, 10);
+    this.category = '';
     this.refresh();
   }
 
   removeExpense(id: string) {
     this.sb.removeExpense(id);
     this.refresh();
+  }
+
+  get addDisabled(): boolean {
+    const amt = parseFloat(this.amount);
+    if (!this.description.trim() || !this.paidBy || !isFinite(amt) || amt <= 0)
+      return true;
+    const shareIds = Object.keys(this.splitWith).filter(
+      (id) => this.splitWith[id]
+    );
+    if (this.splitMode === 'equal') return false;
+    if (this.splitMode === 'percentage') {
+      if (shareIds.length === 0) return true;
+      const total = shareIds.reduce(
+        (a, id) => a + (parseFloat(String(this.splitsInput[id])) || 0),
+        0
+      );
+      return Math.abs(total - 100) > 0.01;
+    }
+    if (this.splitMode === 'custom') {
+      if (shareIds.length === 0) return true;
+      const total = shareIds.reduce(
+        (a, id) => a + (parseFloat(String(this.splitsInput[id])) || 0),
+        0
+      );
+      return Math.abs(total - parseFloat(this.amount)) > 0.01;
+    }
+    return false;
   }
 }

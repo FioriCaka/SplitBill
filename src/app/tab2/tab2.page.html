@@ -1,88 +1,151 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>Expenses</ion-title>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content [fullscreen]="true" class="p-4">
-  <div class="space-y-4">
-    <ion-item *ngIf="groups.length">
-      <ion-label>Group</ion-label>
-      <ion-select
-        [(ngModel)]="groupId"
-        interface="popover"
-        placeholder="All participants"
-        (ionChange)="onSelectGroup($event.detail.value)"
-      >
-        <ion-select-option [value]="''">All participants</ion-select-option>
-        <ion-select-option *ngFor="let g of groups" [value]="g.id"
-          >{{ g.name }}</ion-select-option
+<ion-content [fullscreen]="true">
+  <div
+    class="bg-gradient-to-r from-indigo-500 to-purple-500 h-28 flex items-center text-white font-semibold"
+  >
+    <p class="text-3xl ml-4 font-mono">Add Expense</p>
+  </div>
+  <div class="-mt-10 p-4 space-y-4">
+    <div
+      class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 space-y-4 dark:text-slate-100"
+    >
+      <ion-item *ngIf="groups.length">
+        <ion-label>Group</ion-label>
+        <ion-select
+          [(ngModel)]="groupId"
+          interface="popover"
+          placeholder="All participants"
+          (ionChange)="onSelectGroup($event.detail.value)"
         >
-      </ion-select>
-    </ion-item>
-    <ion-item>
-      <ion-label position="stacked">Description</ion-label>
-      <ion-input
-        placeholder="e.g. Dinner"
-        [(ngModel)]="description"
-      ></ion-input>
-    </ion-item>
+          <ion-select-option [value]="''">All participants</ion-select-option>
+          <ion-select-option *ngFor="let g of groups" [value]="g.id"
+            >{{ g.name }}</ion-select-option
+          >
+        </ion-select>
+      </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Description</ion-label>
+        <ion-input
+          placeholder="e.g. Dinner"
+          [(ngModel)]="description"
+        ></ion-input>
+      </ion-item>
 
-    <ion-item>
-      <ion-label position="stacked">Amount</ion-label>
-      <ion-input
-        type="number"
-        inputmode="decimal"
-        placeholder="0.00"
-        [(ngModel)]="amount"
-      ></ion-input>
-    </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Amount</ion-label>
+        <ion-input
+          type="number"
+          inputmode="decimal"
+          placeholder="0.00"
+          [(ngModel)]="amount"
+        ></ion-input>
+      </ion-item>
 
-    <ion-item>
-      <ion-label>Paid by</ion-label>
-      <ion-select
-        [(ngModel)]="paidBy"
-        interface="popover"
-        placeholder="Select payer"
-      >
-        <ion-select-option
-          *ngFor="let p of availableParticipants"
-          [value]="p.id"
-          >{{ p.name }}</ion-select-option
+      <ion-item>
+        <ion-label position="stacked">Date</ion-label>
+        <ion-input type="date" [(ngModel)]="date"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label>Category</ion-label>
+        <ion-select
+          [(ngModel)]="category"
+          interface="popover"
+          placeholder="Select category"
         >
-      </ion-select>
-    </ion-item>
+          <ion-select-option *ngFor="let c of categories" [value]="c"
+            >{{ c }}</ion-select-option
+          >
+        </ion-select>
+      </ion-item>
 
-    <div>
-      <div class="text-xs font-medium mb-2">Split with</div>
-      <ion-list>
-        <ion-item *ngFor="let p of availableParticipants">
-          <ion-label>{{ p.name }}</ion-label>
-          <ion-checkbox
-            slot="end"
-            [checked]="!!splitWith[p.id]"
-            (ionChange)="toggleShare(p.id, $event.detail.checked)"
-          ></ion-checkbox>
-        </ion-item>
-      </ion-list>
+      <ion-item>
+        <ion-label>Paid by</ion-label>
+        <ion-select
+          [(ngModel)]="paidBy"
+          interface="popover"
+          placeholder="Select payer"
+        >
+          <ion-select-option
+            *ngFor="let p of availableParticipants"
+            [value]="p.id"
+            >{{ p.name }}</ion-select-option
+          >
+        </ion-select>
+      </ion-item>
+
+      <div>
+        <div class="text-xs font-medium mb-2">Split with</div>
+        <ion-list>
+          <ion-item *ngFor="let p of availableParticipants">
+            <ion-label>{{ p.name }}</ion-label>
+            <ion-checkbox
+              slot="end"
+              [checked]="!!splitWith[p.id]"
+              (ionChange)="toggleShare(p.id, $event.detail.checked)"
+            ></ion-checkbox>
+          </ion-item>
+        </ion-list>
+      </div>
+
+      <ion-item>
+        <ion-label>Split mode</ion-label>
+        <ion-select [(ngModel)]="splitMode" interface="popover">
+          <ion-select-option value="equal">Equal</ion-select-option>
+          <ion-select-option value="percentage">Percentage</ion-select-option>
+          <ion-select-option value="custom">Custom amounts</ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <div *ngIf="splitMode !== 'equal'" class="space-y-2">
+        <div
+          class="text-xs text-gray-600 dark:text-gray-300"
+          *ngIf="splitMode==='percentage'"
+        >
+          Percentages must total 100%.
+        </div>
+        <div
+          class="text-xs text-gray-600 dark:text-gray-300"
+          *ngIf="splitMode==='custom'"
+        >
+          Custom amounts must total the expense amount.
+        </div>
+        <ion-list>
+          <ion-item
+            *ngFor="let p of availableParticipants"
+            [hidden]="!splitWith[p.id]"
+          >
+            <ion-label>{{ p.name }}</ion-label>
+            <ion-input
+              slot="end"
+              class="w-24 text-right"
+              type="number"
+              inputmode="decimal"
+              [(ngModel)]="splitsInput[p.id]"
+              placeholder="0"
+            ></ion-input>
+          </ion-item>
+        </ion-list>
+      </div>
+
+      <ion-button expand="block" (click)="addExpense()" [disabled]="addDisabled"
+        >Add Expense</ion-button
+      >
     </div>
 
-    <ion-button
-      expand="block"
-      (click)="addExpense()"
-      [disabled]="!description.trim() || !paidBy || !(+amount>0)"
-      >Add Expense</ion-button
+    <div
+      class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 dark:text-slate-100"
     >
-
-    <div>
       <div class="text-sm font-semibold mb-2">Recent expenses</div>
-      <ion-list *ngIf="expenses.length; else noexp">
+      <ion-list
+        *ngIf="expenses.length; else noexp"
+        class="rounded-md overflow-hidden dark:bg-transparent"
+      >
         <ion-item *ngFor="let e of expenses">
           <ion-label>
             <div class="font-medium">
               {{ e.description }} - {{ e.amount | number:'1.2-2' }}
             </div>
-            <div class="text-xs text-gray-500">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
               {{ e.createdAt | date:'short' }}
             </div>
           </ion-label>
@@ -96,7 +159,7 @@
         </ion-item>
       </ion-list>
       <ng-template #noexp>
-        <div class="text-center text-sm text-gray-500 py-6">
+        <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-6">
           No expenses yet.
         </div>
       </ng-template>

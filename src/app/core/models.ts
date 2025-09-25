@@ -10,10 +10,20 @@ export interface Expense {
   id: UUID;
   description: string;
   amount: number; // in currency units
-  paidBy: UUID; // participant id
+  paidBy: UUID; // user id
   splitWith: UUID[]; // participants sharing this expense
   createdAt: string; // ISO date
   groupId?: UUID; // optional group association
+  // Advanced splitting
+  splitMode?: 'equal' | 'percentage' | 'custom';
+  splits?: Array<{
+    participantId: UUID; // user id
+    percentage?: number; // used when splitMode = 'percentage'
+    amount?: number; // used when splitMode = 'custom'
+  }>;
+  // Optional metadata
+  date?: string; // ISO date of the expense itself
+  category?: string; // e.g., Food, Travel, Rent
 }
 
 export interface State {
@@ -40,6 +50,9 @@ export interface User {
   id: UUID;
   name: string;
   email: string;
+  startingBalance?: number;
+  imageUrl?: string;
+  createdAt: string;
 }
 
 export interface Group {

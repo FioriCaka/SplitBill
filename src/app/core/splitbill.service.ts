@@ -1,4 +1,6 @@
 import { Injectable, inject } from '@angular/core';
+import { BackendApiService } from './backend.service';
+import { firstValueFrom } from 'rxjs';
 import {
   State,
   Participant,
@@ -44,6 +46,7 @@ function uuid(): UUID {
 
 @Injectable({ providedIn: 'root' })
 export class SplitBillService {
+  private api = inject(BackendApiService);
   private state: State = {
     participants: [],
     expenses: [],
@@ -56,6 +59,40 @@ export class SplitBillService {
     this.load();
   }
 
+  // Replace a participant id everywhere it appears across state
+  private rekeyParticipantId(oldId: UUID, newId: UUID) {
+    if (oldId === newId) return;
+    // Participant record
+    const p = this.state.participants.find((pp) => pp.id === oldId);
+    if (p) p.id = newId;
+    // Expenses: payer, splitWith array, splits entries
+    for (const e of this.state.expenses) {
+      if (e.paidBy === oldId) e.paidBy = newId;
+      if (Array.isArray(e.splitWith)) {
+        e.splitWith = e.splitWith.map((sid) => (sid === oldId ? newId : sid));
+        // de-duplicate if any
+        e.splitWith = Array.from(new Set(e.splitWith));
+      }
+      if (Array.isArray(e.splits)) {
+        for (const s of e.splits) {
+          if (s.participantId === oldId) s.participantId = newId;
+        }
+      }
+    }
+    // Groups: memberIds
+    for (const g of this.state.groups || []) {
+      if (!Array.isArray(g.memberIds)) continue;
+      g.memberIds = g.memberIds.map((sid) => (sid === oldId ? newId : sid));
+      g.memberIds = Array.from(new Set(g.memberIds));
+    }
+    // Invites: invitedByParticipantId (if used locally)
+    for (const inv of this.state.invites || []) {
+      if ((inv as any).invitedByParticipantId === oldId)
+        (inv as any).invitedByParticipantId = newId;
+    }
+    this.save();
+  }
+
   private save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
   }
@@ -65,6 +102,22 @@ export class SplitBillService {
     if (raw) {
       try {
         this.state = JSON.parse(raw);
+        // Normalize collections in case of older saved state without new fields
+        if (!this.state.participants) this.state.participants = [];
+        if (!this.state.expenses) this.state.expenses = [];
+        if (!this.state.groups) this.state.groups = [];
+        if (!this.state.invites) this.state.invites = [];
+        // Ensure createdAt exists on entities that require it
+        const now = new Date().toISOString();
+        for (const e of this.state.expenses) {
+          if (!(e as any).createdAt) (e as any).createdAt = now;
+        }
+        for (const g of this.state.groups) {
+          if (!(g as any).createdAt) (g as any).createdAt = now;
+        }
+        for (const i of this.state.invites) {
+          if (!(i as any).createdAt) (i as any).createdAt = now;
+        }
       } catch {
         this.state = {
           participants: [],
@@ -78,6 +131,13 @@ export class SplitBillService {
     if (uraw)
       try {
         this.currentUser = JSON.parse(uraw);
+        if (this.currentUser && !(this.currentUser as any).createdAt) {
+          (this.currentUser as any).createdAt = new Date().toISOString();
+          localStorage.setItem(
+            STORAGE_KEY + ':user',
+            JSON.stringify(this.currentUser)
+          );
+        }
       } catch {}
   }
 
@@ -90,8 +150,29 @@ export class SplitBillService {
   getUser() {
     return this.currentUser;
   }
-  login(name: string, email: string) {
-    this.currentUser = { id: uuid(), name: name.trim(), email: email.trim() };
+  // Set user from backend auth (preferred)
+  setUser(
+    id: string,
+    name: string,
+    email: string,
+    startingBalance?: number,
+    imageUrl?: string
+  ) {
+    const newId = id as UUID;
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const now = new Date().toISOString();
+    this.currentUser = {
+      id: newId,
+      name: trimmedName,
+      email: trimmedEmail,
+      startingBalance:
+        typeof startingBalance === 'number'
+          ? +startingBalance
+          : this.currentUser?.startingBalance,
+      imageUrl: imageUrl ?? this.currentUser?.imageUrl,
+      createdAt: (this.currentUser as any)?.createdAt || now,
+    } as User;
     localStorage.setItem(
       STORAGE_KEY + ':user',
       JSON.stringify(this.currentUser)
@@ -102,18 +183,95 @@ export class SplitBillService {
     );
     if (!p) {
       p = {
-        id: uuid(),
-        name: this.currentUser.name,
-        email: this.currentUser.email,
+        id: newId,
+        name: this.currentUser!.name,
+        email: this.currentUser!.email,
       };
       this.state.participants.push(p);
+      this.save();
+    } else {
+      // If participant exists but has a different id, migrate references
+      if (p.id !== newId) this.rekeyParticipantId(p.id, newId);
+      p.id = newId;
+      p.name = this.currentUser!.name;
+      p.email = this.currentUser!.email;
       this.save();
     }
     return this.currentUser;
   }
+  setUserImage(url: string) {
+    if (!this.currentUser) return;
+    this.currentUser.imageUrl = url;
+    localStorage.setItem(
+      STORAGE_KEY + ':user',
+      JSON.stringify(this.currentUser)
+    );
+  }
+  login(name: string, email: string) {
+    this.currentUser = {
+      id: uuid(),
+      name: name.trim(),
+      email: email.trim(),
+      createdAt: new Date().toISOString(),
+    } as User;
+    const u = this.currentUser;
+    localStorage.setItem(STORAGE_KEY + ':user', JSON.stringify(u));
+    const lower = u.email.toLowerCase();
+    let p = this.state.participants.find(
+      (pp) => (pp.email || '').toLowerCase() === lower
+    );
+    if (!p) {
+      p = {
+        id: uuid(),
+        name: u.name,
+        email: u.email,
+      };
+      this.state.participants.push(p);
+      this.save();
+    }
+    return u;
+  }
   logout() {
     this.currentUser = null;
     localStorage.removeItem(STORAGE_KEY + ':user');
+  }
+
+  updateUser(name: string, email: string) {
+    if (!this.currentUser) return;
+    const prevEmail = this.currentUser.email;
+    this.currentUser.name = name.trim();
+    this.currentUser.email = email.trim();
+    localStorage.setItem(
+      STORAGE_KEY + ':user',
+      JSON.stringify(this.currentUser)
+    );
+    const p =
+      this.getParticipantByEmail(prevEmail) ||
+      this.getParticipantByEmail(this.currentUser.email);
+    if (p) {
+      p.name = this.currentUser.name;
+      p.email = this.currentUser.email;
+    } else {
+      this.state.participants.push({
+        id: uuid(),
+        name: this.currentUser.name,
+        email: this.currentUser.email,
+      });
+    }
+    this.save();
+  }
+
+  getStartingBalance(): number {
+    return this.currentUser?.startingBalance || 0;
+  }
+
+  setStartingBalance(amount: number) {
+    if (!this.currentUser) return;
+    this.currentUser.startingBalance = +amount;
+    localStorage.setItem(
+      STORAGE_KEY + ':user',
+      JSON.stringify(this.currentUser)
+    );
   }
 
   getParticipantByEmail(email: string) {
@@ -151,6 +309,7 @@ export class SplitBillService {
       .map((e) => ({
         ...e,
         splitWith: e.splitWith.filter((sid) => sid !== id),
+        splits: (e.splits || []).filter((s) => s.participantId !== id),
       }));
     this.save();
   }
@@ -175,6 +334,44 @@ export class SplitBillService {
   }
 
   // Calculations
+  private computeShares(
+    e: Expense,
+    allParticipants: Participant[]
+  ): Map<UUID, number> {
+    const shares = new Map<UUID, number>();
+    const mode = e.splitMode || 'equal';
+    if (mode === 'equal') {
+      const sharers =
+        e.splitWith.length > 0 ? e.splitWith : allParticipants.map((p) => p.id);
+      const share = e.amount / (sharers.length || 1);
+      for (const sid of sharers) shares.set(sid, share);
+      return shares;
+    }
+    if (mode === 'percentage') {
+      const list = (e.splits || []).filter(
+        (s) => typeof s.percentage === 'number' && s.percentage! > 0
+      );
+      const totalPct = list.reduce((a, b) => a + (b.percentage || 0), 0);
+      const norm = totalPct === 0 ? 1 : totalPct / 100;
+      for (const s of list) {
+        const owed = e.amount * ((s.percentage || 0) / (norm * 100));
+        shares.set(s.participantId, owed);
+      }
+      return shares;
+    }
+    // custom amounts
+    for (const s of e.splits || []) {
+      if (typeof s.amount === 'number' && s.amount! > 0)
+        shares.set(s.participantId, s.amount!);
+    }
+    return shares;
+  }
+
+  // Helper: share owed by a participant for a single expense
+  shareOfParticipant(e: Expense, participantId: UUID): number {
+    const shares = this.computeShares(e, this.state.participants);
+    return +(shares.get(participantId) || 0);
+  }
   balances(): BalanceLine[] {
     const map = new Map<UUID, BalanceLine>();
     for (const p of this.state.participants) {
@@ -186,22 +383,38 @@ export class SplitBillService {
       });
     }
     for (const e of this.state.expenses) {
-      const sharers =
-        e.splitWith.length > 0
-          ? e.splitWith
-          : this.state.participants.map((p) => p.id);
-      const share = e.amount / sharers.length;
       const payer = map.get(e.paidBy);
       if (payer) payer.paidTotal += e.amount;
-      for (const sid of sharers) {
+      const shares = this.computeShares(e, this.state.participants);
+      for (const [sid, owed] of shares) {
         const line = map.get(sid);
-        if (line) line.owedTotal += share;
+        if (line) line.owedTotal += owed;
       }
     }
     for (const line of map.values()) {
       line.net = +(line.paidTotal - line.owedTotal).toFixed(2);
     }
     return [...map.values()];
+  }
+
+  // Backend-backed balances for a group. Falls back to local calc if no group.
+  async balancesForGroup(groupId?: UUID): Promise<BalanceLine[]> {
+    if (!groupId) return this.balances();
+    try {
+      const rows = await firstValueFrom(this.api.getGroupBalances(groupId));
+      const out: BalanceLine[] = [];
+      for (const r of rows || []) {
+        out.push({
+          participantId: String(r.userId) as UUID,
+          paidTotal: r.balance >= 0 ? r.balance : 0,
+          owedTotal: r.balance < 0 ? -r.balance : 0,
+          net: +r.balance,
+        });
+      }
+      return out;
+    } catch {
+      return this.balances();
+    }
   }
 
   // Greedy settlement: payers with negative net pay receivers with positive net
@@ -246,21 +459,44 @@ export class SplitBillService {
     }
     const expenses = this.state.expenses.filter((e) => set.has(e.id));
     for (const e of expenses) {
-      const sharers =
-        e.splitWith.length > 0
-          ? e.splitWith
-          : this.state.participants.map((p) => p.id);
-      const share = e.amount / sharers.length;
       const payer = map.get(e.paidBy);
       if (payer) payer.paidTotal += e.amount;
-      for (const sid of sharers) {
+      const shares = this.computeShares(e, this.state.participants);
+      for (const [sid, owed] of shares) {
         const line = map.get(sid);
-        if (line) line.owedTotal += share;
+        if (line) line.owedTotal += owed;
       }
     }
     for (const line of map.values())
       line.net = +(line.paidTotal - line.owedTotal).toFixed(2);
     return [...map.values()];
+  }
+
+  // Aggregated direct ledger of who owes whom (pre-settlement)
+  ledger(): SettlementSuggestion[] {
+    const pair = new Map<string, number>(); // key: from->to
+    for (const e of this.state.expenses) {
+      const shares = this.computeShares(e, this.state.participants);
+      for (const [sid, owed] of shares) {
+        if (sid === e.paidBy) continue;
+        const key = `${sid}->${e.paidBy}`;
+        pair.set(key, +((pair.get(key) || 0) + owed).toFixed(2));
+      }
+    }
+    const res: SettlementSuggestion[] = [];
+    for (const [k, amount] of pair) {
+      const [from, to] = k.split('->') as [UUID, UUID];
+      if (amount > 0.005) res.push({ from, to, amount: +amount.toFixed(2) });
+    }
+    return res;
+  }
+
+  // Group membership updates
+  removeParticipantFromGroup(groupId: UUID, participantId: UUID) {
+    const g = this.state.groups!.find((g) => g.id === groupId);
+    if (!g) return;
+    g.memberIds = g.memberIds.filter((id) => id !== participantId);
+    this.save();
   }
 
   settlementFor(expenseIds: UUID[]): SettlementSuggestion[] {
@@ -303,6 +539,7 @@ export class SplitBillService {
     return p ? this.listGroupsForParticipant(p.id) : [];
   }
   addGroup(name: string, memberIds: UUID[]) {
+    if (!this.state.groups) this.state.groups = [];
     const g: Group = {
       id: uuid(),
       name: name.trim(),
@@ -337,6 +574,7 @@ export class SplitBillService {
     invitedEmail: string,
     invitedByParticipantId: UUID
   ) {
+    if (!this.state.invites) this.state.invites = [];
     const inv: Invite = {
       id: uuid(),
       groupId,

@@ -1,22 +1,136 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>Profile</ion-title>
-  </ion-toolbar>
-</ion-header>
-
 <ion-content [fullscreen]="true">
-  <div class="p-6 space-y-4">
-    <div class="text-xl font-semibold">Account</div>
-    <div class="p-4 rounded bg-gray-50">
-      <div>
-        Name: <span class="font-medium">{{ user?.name || 'Guest' }}</span>
+  <div
+    class="bg-gradient-to-r from-indigo-500 to-purple-500 h-28 flex items-center text-white font-semibold"
+  >
+    <p class="ml-4 text-3xl font-mono">My Wallet</p>
+  </div>
+  <div class="-mt-10 p-4">
+    <div
+      class="rounded-xl bg-white dark:bg-neutral-900 shadow-lg p-4 space-y-3 mb-6 dark:text-slate-100"
+    >
+      <div class="flex items-center justify-between">
+        <p class="font-mono">Balance: {{ currentBalance | currency }}</p>
+        <ion-button size="small" (click)="openBalanceModal()"
+          >Set Balance</ion-button
+        >
       </div>
-      <div>
-        Email: <span class="font-medium">{{ user?.email || '-' }}</span>
+      <div class="text-xs text-gray-500 dark:text-gray-400">
+        Starting: {{ startingBalance | currency }}
+      </div>
+      <div class="text-sm text-gray-600 dark:text-gray-300">
+        Current vs Estimated
+      </div>
+      <div class="h-56">
+        <canvas #balanceChart></canvas>
       </div>
     </div>
-    <ion-button expand="block" color="medium" (click)="logout()" *ngIf="user"
-      >Log out</ion-button
-    >
+
+    <ion-accordion-group class="rounded-xl shadow-lg">
+      <ion-accordion value="account" class="rounded-xl">
+        <ion-item
+          slot="header"
+          class="rounded-xl bg-white dark:bg-neutral-900 shadow-sm"
+        >
+          <ion-label class="text-lg font-semibold">Account Details</ion-label>
+        </ion-item>
+        <div
+          slot="content"
+          class="p-4 space-y-4 dark:bg-neutral-900 dark:text-slate-100"
+        >
+          <div class="flex items-center space-x-4 justify-center">
+            <img
+              [src]="user?.imageUrl || 'assets/default-user.png'"
+              alt="Profile"
+              class="w-24 h-24 rounded-3xl object-cover border"
+              (click)="fileInput.click()"
+            />
+            <input
+              #fileInput
+              type="file"
+              accept="image/*"
+              hidden
+              (change)="onImageSelected($event)"
+            />
+          </div>
+          <ion-item lines="full">
+            <ion-label position="stacked">Name</ion-label>
+            <ion-input [(ngModel)]="name" placeholder="Your name"></ion-input>
+          </ion-item>
+          <ion-item lines="full">
+            <ion-label position="stacked">Email</ion-label>
+            <ion-input
+              [(ngModel)]="email"
+              placeholder="you@example.com"
+            ></ion-input>
+          </ion-item>
+          <ion-item lines="full">
+            <ion-label position="stacked">Created At</ion-label>
+            <ion-input
+              [(ngModel)]="createdAt"
+              placeholder="{{ createdAt }}"
+              disabled
+            ></ion-input>
+          </ion-item>
+          <ion-item lines="full">
+            <ion-label position="stacked">Password</ion-label>
+            <ion-input
+              type="password"
+              [(ngModel)]="password"
+              placeholder="Leave blank to keep current"
+            ></ion-input>
+          </ion-item>
+          <ion-button
+            expand="block"
+            (click)="save()"
+            [disabled]="!((name || '').trim()) || !((email || '').trim())"
+            >Save</ion-button
+          >
+          <ion-button
+            class="mt-3"
+            expand="block"
+            color="medium"
+            (click)="logout()"
+            *ngIf="user"
+            >Log out</ion-button
+          >
+        </div>
+      </ion-accordion>
+    </ion-accordion-group>
   </div>
+
+  <!-- Balance Modal -->
+  <ion-modal
+    [isOpen]="balanceModalOpen"
+    (didDismiss)="closeBalanceModal()"
+    class="wallet-modal pt-56 pb-96 px-16"
+  >
+    <ng-template>
+      <div class="p-4 dark:bg-neutral-900 dark:text-slate-100">
+        <div class="text-lg font-semibold">Set Starting Balance</div>
+        <ion-item class="mt-6 mb-5">
+          <ion-label position="stacked">Amount</ion-label>
+          <ion-input
+            type="number"
+            inputmode="decimal"
+            [(ngModel)]="startingBalanceInput"
+          ></ion-input>
+        </ion-item>
+        <div class="flex flex-row justify-between align-middle">
+          <ion-button
+            expand="block"
+            color="medium"
+            class="w-full"
+            (click)="closeBalanceModal()"
+            >Cancel</ion-button
+          >
+          <ion-button
+            expand="block"
+            class="w-full"
+            (click)="saveStartingBalance()"
+            >Save</ion-button
+          >
+        </div>
+      </div>
+    </ng-template>
+  </ion-modal>
 </ion-content>

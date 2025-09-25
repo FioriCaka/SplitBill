@@ -1,17 +1,92 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>Summary</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true">
+  <div
+    class="bg-gradient-to-r from-indigo-500 to-purple-500 h-28 flex items-center text-white font-semibold"
+  >
+    <div class="text-3xl ml-4 font-mono">Welcome back {{ userName }}</div>
+  </div>
+  <div class="-mt-10 p-4 space-y-5">
+    <!-- Recent Activity -->
+    <div
+      class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+    >
+      <div class="text-sm font-semibold mb-2">Recent activity</div>
+      <ion-list
+        *ngIf="recent.length; else norecent"
+        class="rounded-md overflow-hidden dark:bg-transparent"
+      >
+        <ion-item *ngFor="let r of recent">
+          <ion-label>
+            <div class="font-medium">
+              {{ r.description }}
+              <span
+                *ngIf="r.category"
+                class="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >{{ r.category }}</span
+              >
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              {{ r.createdAt | date:'short' }}<span *ngIf="r.groupName">
+                • {{ r.groupName }}</span
+              >
+            </div>
+          </ion-label>
+          <div class="font-semibold" slot="end">
+            {{ r.amount | number:'1.2-2' }}
+          </div>
+        </ion-item>
+      </ion-list>
+      <ng-template #norecent>
+        <div class="text-center text-sm text-gray-500 py-4">
+          No recent activity.
+        </div>
+      </ng-template>
+    </div>
 
-<ion-content [fullscreen]="true" class="p-4">
-  <div class="space-y-6">
+    <div class="grid grid-cols-2 gap-3">
+      <div
+        class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 dark:text-slate-100"
+      >
+        <div class="text-xs text-gray-500 dark:text-gray-400">Total paid</div>
+        <div class="text-lg font-semibold">
+          {{ totalPaid | number:'1.2-2' }}
+        </div>
+      </div>
+      <div
+        class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 dark:text-slate-100"
+      >
+        <div class="text-xs text-gray-500 dark:text-gray-400">Total owed</div>
+        <div class="text-lg font-semibold">
+          {{ totalOwed | number:'1.2-2' }}
+        </div>
+      </div>
+      <div
+        class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 col-span-2 dark:text-slate-100"
+      >
+        <div class="text-xs text-gray-500 dark:text-gray-400">Net</div>
+        <div
+          [class]="netAll>=0 ? 'text-green-600 text-2xl font-bold' : 'text-red-600 text-2xl font-bold'"
+        >
+          {{ netAll | number:'1.2-2' }}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <ion-button [routerLink]="['/tabs/tab2']" expand="block"
+        >Add expense</ion-button
+      >
+      <ion-button [routerLink]="['/tabs/tab1']" color="secondary" expand="block"
+        >Groups & invites</ion-button
+      >
+    </div>
+
+    <!-- Invites -->
     <div
       *ngIf="invites.length"
-      class="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm"
+      class="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-300/30 dark:bg-amber-900/30 p-3"
     >
-      <div class="font-medium mb-2">Invitations</div>
-      <ion-list>
+      <div class="font-semibold mb-2">Invitations</div>
+      <ion-list class="rounded-md overflow-hidden">
         <ion-item *ngFor="let inv of invites">
           <ion-label>Group invite for {{ inv.email }}</ion-label>
           <ion-button
@@ -32,88 +107,113 @@
       </ion-list>
     </div>
 
-    <div>
-      <div class="text-sm font-semibold mb-2">Filter by group</div>
-      <ion-item>
-        <ion-label>Group</ion-label>
-        <ion-select
-          placeholder="All groups"
-          [value]="selectedGroupId || undefined"
-          (ionChange)="onSelectGroup($event.detail.value)"
-        >
-          <ion-select-option [value]="undefined">All</ion-select-option>
-          <ion-select-option *ngFor="let g of groups" [value]="g.id"
-            >{{ g.name }}</ion-select-option
+    <!-- Group filter & expense chooser -->
+    <div class="grid grid-cols-1 gap-4">
+      <div
+        class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+      >
+        <div class="text-xs font-semibold mb-2">Group</div>
+        <ion-item lines="none">
+          <ion-label>Filter</ion-label>
+          <ion-select
+            placeholder="All groups"
+            [value]="selectedGroupId || undefined"
+            (ionChange)="onSelectGroup($event.detail.value)"
           >
-        </ion-select>
-      </ion-item>
-    </div>
-    <div>
-      <div class="text-sm font-semibold mb-2">Include expenses</div>
-      <ion-item *ngIf="allExpenses.length; else noExpensesTpl">
-        <ion-label>Selected</ion-label>
-        <ion-select
-          multiple="true"
-          interface="popover"
-          placeholder="Choose expenses"
-          [value]="selectedExpenseIds"
-          (ionChange)="onSelectChange($event.detail.value)"
-        >
-          <ion-select-option *ngFor="let e of allExpenses" [value]="e.id">
-            {{ e.description }} — {{ e.amount | number:'1.2-2' }}
-          </ion-select-option>
-        </ion-select>
-      </ion-item>
-      <ng-template #noExpensesTpl>
-        <div class="text-center text-sm text-gray-500 py-6">
-          No expenses to choose yet.
-        </div>
-      </ng-template>
+            <ion-select-option [value]="undefined">All</ion-select-option>
+            <ion-select-option *ngFor="let g of groups" [value]="g.id"
+              >{{ g.name }}</ion-select-option
+            >
+          </ion-select>
+        </ion-item>
+      </div>
+
+      <div
+        class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+      >
+        <div class="text-xs font-semibold mb-2">Include expenses</div>
+        <ion-item *ngIf="allExpenses.length; else noExpensesTpl" lines="none">
+          <ion-label>Selected</ion-label>
+          <ion-select
+            multiple
+            interface="popover"
+            placeholder="Choose expenses"
+            [value]="selectedExpenseIds"
+            (ionChange)="onSelectChange($event.detail.value)"
+          >
+            <ion-select-option *ngFor="let e of allExpenses" [value]="e.id"
+              >{{ e.description }} — {{ e.amount | number:'1.2-2'
+              }}</ion-select-option
+            >
+          </ion-select>
+        </ion-item>
+        <ng-template #noExpensesTpl>
+          <div
+            class="text-center text-sm text-gray-500 dark:text-gray-400 py-4"
+          >
+            No expenses to choose yet.
+          </div>
+        </ng-template>
+      </div>
     </div>
 
-    <div>
+    <!-- Balances -->
+    <div
+      class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+    >
       <div class="text-sm font-semibold mb-2">Balances</div>
-      <ion-list *ngIf="balances.length; else nobal">
+      <ion-list
+        *ngIf="balances.length; else nobal"
+        class="rounded-md overflow-hidden dark:bg-transparent"
+      >
         <ion-item *ngFor="let b of balances">
           <ion-label>
             <div class="font-medium">{{ nameOf(b.participantId) }}</div>
-            <div class="text-xs text-gray-500">
+            <div class="text-xs text-gray-500 dark:text-gray-400">
               Paid: {{ b.paidTotal | number:'1.2-2' }} • Owes: {{ b.owedTotal |
               number:'1.2-2' }}
             </div>
           </ion-label>
           <div class="text-right" slot="end">
-            <div [class]="b.net>=0 ? 'text-green-600' : 'text-red-600'">
+            <div
+              [class]="b.net>=0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'"
+            >
               {{ b.net | number:'1.2-2' }}
             </div>
           </div>
         </ion-item>
       </ion-list>
       <ng-template #nobal>
-        <div class="text-center text-sm text-gray-500 py-6">
+        <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
           No balances yet.
         </div>
       </ng-template>
     </div>
 
-    <div>
+    <!-- Settlements -->
+    <div
+      class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+    >
       <div class="text-sm font-semibold mb-2">Settlement suggestions</div>
-      <ion-list *ngIf="settlements.length; else noset">
+      <ion-list
+        *ngIf="settlements.length; else noset"
+        class="rounded-md overflow-hidden dark:bg-transparent"
+      >
         <ion-item *ngFor="let s of settlements">
           <ion-label>{{ nameOf(s.from) }} pays {{ nameOf(s.to) }}</ion-label>
-          <div class="font-medium" slot="end">
+          <div class="font-semibold" slot="end">
             {{ s.amount | number:'1.2-2' }}
           </div>
         </ion-item>
       </ion-list>
       <ng-template #noset>
-        <div class="text-center text-sm text-gray-500 py-6">
+        <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
           All settled up 🎉
         </div>
       </ng-template>
     </div>
 
-    <ion-button expand="block" color="medium" (click)="refresh()"
+    <ion-button expand="block" color="primary" (click)="refresh()"
       >Recalculate</ion-button
     >
   </div>

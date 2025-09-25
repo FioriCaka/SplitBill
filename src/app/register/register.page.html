@@ -1,39 +1,44 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>Register</ion-title>
-  </ion-toolbar>
-</ion-header>
-<ion-content class="p-4">
-  <div class="space-y-4">
-    <ion-item>
-      <ion-label position="stacked">Name</ion-label>
-      <ion-input [(ngModel)]="name" placeholder="Your name"></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-label position="stacked">Email</ion-label>
-      <ion-input [(ngModel)]="email" placeholder="you@example.com"></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-label position="stacked">Password</ion-label>
-      <ion-input
-        type="password"
-        [(ngModel)]="password"
-        placeholder="••••••••"
-      ></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-label position="stacked">Confirm Password</ion-label>
-      <ion-input
-        type="password"
-        [(ngModel)]="confirmPassword"
-        placeholder="••••••••"
-      ></ion-input>
-    </ion-item>
-    <ion-button
-      expand="block"
-      (click)="register()"
-      [disabled]="!name.trim() || !email.trim() || !password || password !== confirmPassword"
-      >Create Account</ion-button
+<ion-content [fullscreen]="true">
+  <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-32"></div>
+  <div class="-mt-12 p-4">
+    <div
+      class="rounded-xl bg-white dark:bg-neutral-900 shadow p-5 space-y-4 max-w-md mx-auto dark:text-slate-100"
     >
+      <div class="text-lg font-semibold">Create your account</div>
+      <ion-item lines="full">
+        <ion-label position="stacked">Name</ion-label>
+        <ion-input [(ngModel)]="name" placeholder="Your name"></ion-input>
+      </ion-item>
+      <ion-item lines="full">
+        <ion-label position="stacked">Email</ion-label>
+        <ion-input
+          [(ngModel)]="email"
+          placeholder="you@example.com"
+        ></ion-input>
+      </ion-item>
+      <ion-item lines="full">
+        <ion-label position="stacked">Password</ion-label>
+        <ion-input
+          type="password"
+          [(ngModel)]="password"
+          placeholder="••••••••"
+        ></ion-input>
+      </ion-item>
+      <ion-item lines="full">
+        <ion-label position="stacked">Confirm Password</ion-label>
+        <ion-input
+          type="password"
+          [(ngModel)]="confirmPassword"
+          placeholder="••••••••"
+        ></ion-input>
+      </ion-item>
+      <ion-button
+        expand="block"
+        (click)="register()"
+        [disabled]="!name.trim() || !email.trim() || !password || password !== confirmPassword"
+        >Create Account</ion-button
+      >
+      <div *ngIf="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</div>
+    </div>
   </div>
 </ion-content>

@@ -34,6 +34,16 @@ log.txt
 npm-debug.log
 yarn-error.log
 
+# Capacitor native build outputs
+/android/build/
+/android/app/build/
+/ios/build/
+/ios/App/build/
+
+# Generated assets (safe to recreate)
+/resources/
+/src/assets/icons/
+
 # IDEs and editors
 .idea/
 .project

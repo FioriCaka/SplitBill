@@ -1,27 +1,38 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>Login</ion-title>
-  </ion-toolbar>
-</ion-header>
-<ion-content class="p-4">
-  <div class="space-y-4">
-    <ion-item>
-      <ion-label position="stacked">Name</ion-label>
-      <ion-input [(ngModel)]="name" placeholder="Your name"></ion-input>
-    </ion-item>
-    <ion-item>
-      <ion-label position="stacked">Email</ion-label>
-      <ion-input [(ngModel)]="email" placeholder="you@example.com"></ion-input>
-    </ion-item>
-    <ion-button
-      expand="block"
-      (click)="login()"
-      [disabled]="!name.trim() || !email.trim()"
-      >Continue</ion-button
+<ion-content [fullscreen]="true">
+  <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-32"></div>
+  <div class="-mt-12 p-4">
+    <div
+      class="rounded-xl bg-white dark:bg-neutral-900 shadow p-5 space-y-4 max-w-md mx-auto dark:text-slate-100"
     >
-    <div class="text-center text-sm text-gray-500">
-      Don't have an account?
-      <a routerLink="/register" class="text-primary-600">Register</a>
+      <div class="text-lg font-semibold">Welcome back</div>
+      <ion-item lines="full">
+        <ion-label position="stacked">Email</ion-label>
+        <ion-input
+          [(ngModel)]="email"
+          placeholder="you@example.com"
+        ></ion-input>
+      </ion-item>
+      <ion-item lines="full">
+        <ion-label position="stacked">Password</ion-label>
+        <ion-input
+          type="password"
+          [(ngModel)]="password"
+          placeholder="••••••••"
+        ></ion-input>
+      </ion-item>
+      <ion-button
+        expand="block"
+        (click)="login()"
+        [disabled]="!email.trim() || !password"
+        >Continue</ion-button
+      >
+      <div *ngIf="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</div>
+      <div class="text-center text-sm text-gray-500 dark:text-gray-400">
+        Don't have an account?
+        <a routerLink="/register" class="text-indigo-600 dark:text-indigo-300"
+          >Register</a
+        >
+      </div>
     </div>
   </div>
 </ion-content>

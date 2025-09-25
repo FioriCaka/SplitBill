@@ -3,7 +3,9 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+  // Use your PC's LAN IP so devices can reach the API
+  apiBaseUrl: 'http://192.168.0.126:8000/api',
 };
 
 /*
