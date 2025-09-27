@@ -7,7 +7,7 @@
   <div class="-mt-10 p-4 space-y-5">
     <!-- Recent Activity -->
     <div
-      class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+      class="rounded-lg bg-white dark:bg-neutral-900 shadow-lg p-3 dark:text-slate-100"
     >
       <div class="text-sm font-semibold mb-2">Recent activity</div>
       <ion-list
@@ -42,31 +42,46 @@
       </ng-template>
     </div>
 
+    <div class="flex items-center justify-between" *ngIf="canToggleTotals">
+      <div class="text-xs text-gray-500 dark:text-gray-400">
+        Viewing: <strong>{{ showEveryone ? 'Everyone' : 'You' }}</strong>
+      </div>
+      <ion-button size="small" fill="outline" (click)="toggleTotalsMode()">
+        {{ showEveryone ? 'Switch to You' : 'Switch to Everyone' }}
+      </ion-button>
+    </div>
+
     <div class="grid grid-cols-2 gap-3">
       <div
-        class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 dark:text-slate-100"
+        class="rounded-xl bg-white dark:bg-neutral-900 shadow-lg p-4 dark:text-slate-100"
       >
-        <div class="text-xs text-gray-500 dark:text-gray-400">Total paid</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          {{ displayPaidLabel }}
+        </div>
         <div class="text-lg font-semibold">
-          {{ totalPaid | number:'1.2-2' }}
+          {{ displayPaid | number:'1.2-2' }}
         </div>
       </div>
       <div
-        class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 dark:text-slate-100"
+        class="rounded-xl bg-white dark:bg-neutral-900 shadow-lg p-4 dark:text-slate-100"
       >
-        <div class="text-xs text-gray-500 dark:text-gray-400">Total owed</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          {{ displayOwedLabel }}
+        </div>
         <div class="text-lg font-semibold">
-          {{ totalOwed | number:'1.2-2' }}
+          {{ displayOwed | number:'1.2-2' }}
         </div>
       </div>
       <div
-        class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 col-span-2 dark:text-slate-100"
+        class="rounded-xl bg-white dark:bg-neutral-900 shadow-lg p-4 col-span-2 dark:text-slate-100"
       >
-        <div class="text-xs text-gray-500 dark:text-gray-400">Net</div>
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          {{ displayNetLabel }}
+        </div>
         <div
-          [class]="netAll>=0 ? 'text-green-600 text-2xl font-bold' : 'text-red-600 text-2xl font-bold'"
+          [class]="displayNet>=0 ? 'text-green-600 text-2xl font-bold' : 'text-red-600 text-2xl font-bold'"
         >
-          {{ netAll | number:'1.2-2' }}
+          {{ displayNet | number:'1.2-2' }}
         </div>
       </div>
     </div>
@@ -108,58 +123,68 @@
     </div>
 
     <!-- Group filter & expense chooser -->
-    <div class="grid grid-cols-1 gap-4">
-      <div
-        class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
-      >
-        <div class="text-xs font-semibold mb-2">Group</div>
-        <ion-item lines="none">
-          <ion-label>Filter</ion-label>
-          <ion-select
-            placeholder="All groups"
-            [value]="selectedGroupId || undefined"
-            (ionChange)="onSelectGroup($event.detail.value)"
-          >
-            <ion-select-option [value]="undefined">All</ion-select-option>
-            <ion-select-option *ngFor="let g of groups" [value]="g.id"
-              >{{ g.name }}</ion-select-option
-            >
-          </ion-select>
+    <ion-accordion-group class="rounded-xl shadow-lg">
+      <ion-accordion class="rounded-xl" value="filter">
+        <ion-item slot="header" class="rounded-xl bg-white dark:bg-neutral-900">
+          <ion-label class="text-lg font-semibold">Filters</ion-label>
         </ion-item>
-      </div>
-
-      <div
-        class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
-      >
-        <div class="text-xs font-semibold mb-2">Include expenses</div>
-        <ion-item *ngIf="allExpenses.length; else noExpensesTpl" lines="none">
-          <ion-label>Selected</ion-label>
-          <ion-select
-            multiple
-            interface="popover"
-            placeholder="Choose expenses"
-            [value]="selectedExpenseIds"
-            (ionChange)="onSelectChange($event.detail.value)"
-          >
-            <ion-select-option *ngFor="let e of allExpenses" [value]="e.id"
-              >{{ e.description }} — {{ e.amount | number:'1.2-2'
-              }}</ion-select-option
-            >
-          </ion-select>
-        </ion-item>
-        <ng-template #noExpensesTpl>
+        <div class="grid grid-cols-1 gap-4" slot="content">
           <div
-            class="text-center text-sm text-gray-500 dark:text-gray-400 py-4"
+            class="rounded-lg bg-white dark:bg-neutral-900 shadow-lg p-3 dark:text-slate-100"
           >
-            No expenses to choose yet.
+            <div class="text-xs font-semibold mb-2">Group</div>
+            <ion-item lines="none">
+              <ion-label>Filter</ion-label>
+              <ion-select
+                placeholder="All groups"
+                [value]="selectedGroupId || undefined"
+                (ionChange)="onSelectGroup($event.detail.value)"
+              >
+                <ion-select-option [value]="undefined">All</ion-select-option>
+                <ion-select-option *ngFor="let g of groups" [value]="g.id"
+                  >{{ g.name }}</ion-select-option
+                >
+              </ion-select>
+            </ion-item>
           </div>
-        </ng-template>
-      </div>
-    </div>
+
+          <div
+            class="rounded-lg bg-white dark:bg-neutral-900 shadow-lg p-3 dark:text-slate-100"
+          >
+            <div class="text-xs font-semibold mb-2">Include expenses</div>
+            <ion-item
+              *ngIf="allExpenses.length; else noExpensesTpl"
+              lines="none"
+            >
+              <ion-label>Selected</ion-label>
+              <ion-select
+                multiple
+                interface="popover"
+                placeholder="Choose expenses"
+                [value]="selectedExpenseIds"
+                (ionChange)="onSelectChange($event.detail.value)"
+              >
+                <ion-select-option *ngFor="let e of allExpenses" [value]="e.id"
+                  >{{ e.description }} — {{ e.amount | number:'1.2-2'
+                  }}</ion-select-option
+                >
+              </ion-select>
+            </ion-item>
+            <ng-template #noExpensesTpl>
+              <div
+                class="text-center text-sm text-gray-500 dark:text-gray-400 py-4"
+              >
+                No expenses to choose yet.
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </ion-accordion>
+    </ion-accordion-group>
 
     <!-- Balances -->
     <div
-      class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+      class="rounded-lg bg-white dark:bg-neutral-900 shadow-lg p-3 dark:text-slate-100"
     >
       <div class="text-sm font-semibold mb-2">Balances</div>
       <div
@@ -209,7 +234,7 @@
 
     <!-- Settlements -->
     <div
-      class="rounded-lg bg-white dark:bg-neutral-900 shadow p-3 dark:text-slate-100"
+      class="rounded-lg bg-white dark:bg-neutral-900 shadow-lg p-3 dark:text-slate-100"
     >
       <div class="text-sm font-semibold mb-2">Settlement suggestions</div>
       <ion-list

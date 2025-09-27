@@ -9,6 +9,8 @@ import {
   IonButton,
   IonSelect,
   IonSelectOption,
+  IonAccordionGroup,
+  IonAccordion,
 } from '@ionic/angular/standalone';
 import { SplitBillService } from '../core/splitbill.service';
 import { BackendApiService } from '../core/backend.service';
@@ -25,6 +27,7 @@ import {
   selector: 'app-tab3',
   templateUrl: 'tab3.page.html',
   styleUrls: ['tab3.page.scss'],
+  standalone: true,
   imports: [
     CommonModule,
     RouterLink,
@@ -35,6 +38,8 @@ import {
     IonButton,
     IonSelect,
     IonSelectOption,
+    IonAccordionGroup,
+    IonAccordion,
   ],
 })
 export class Tab3Page {
@@ -59,6 +64,8 @@ export class Tab3Page {
   }> = [];
   private sb = inject(SplitBillService);
   private api = inject(BackendApiService);
+  // Toggle between personal vs everyone totals
+  showEveryone = false;
 
   constructor() {
     this.refresh();
@@ -180,5 +187,81 @@ export class Tab3Page {
   }
   get netAll() {
     return +(this.totalPaid - this.totalOwed).toFixed(2);
+  }
+
+  // User-centric totals (what the CURRENT user personally paid vs owes)
+  private currentUserId(): string | null {
+    return this.sb.getUser()?.id || null;
+  }
+  private expensesForTotals(): Expense[] {
+    // If user selected a subset of expenses, mirror that context; else use all resolved in scope
+    if (this.selectedExpenseIds.length) {
+      const set = new Set(this.selectedExpenseIds);
+      return this.allExpenses.filter((e) => set.has(e.id));
+    }
+    return this.allExpenses;
+  }
+  get userPaid() {
+    const uid = this.currentUserId();
+    if (!uid) return 0;
+    const expenses = this.expensesForTotals();
+    const total = expenses
+      .filter((e) => e.paidBy === uid)
+      .reduce((a, b) => a + b.amount, 0);
+    return +total.toFixed(2);
+  }
+  get userOwed() {
+    const uid = this.currentUserId();
+    if (!uid) return 0;
+    const expenses = this.expensesForTotals();
+    let sum = 0;
+    for (const e of expenses) {
+      sum += this.sb.shareOfParticipant(e, uid as any) || 0;
+    }
+    return +sum.toFixed(2);
+  }
+  get userNet() {
+    return +(this.userPaid - this.userOwed).toFixed(2);
+  }
+
+  // Unified getters for template depending on toggle
+  get displayPaid() {
+    return this.showEveryone ? this.totalPaid : this.userPaid;
+  }
+  get displayOwed() {
+    if (!this.showEveryone) return this.userOwed;
+    const uid = this.currentUserId();
+    if (!uid) return this.totalOwed; // no user context, fall back
+    // Sum owed totals for everyone EXCEPT the current user
+    return this.balances
+      .filter((b) => b.participantId !== uid)
+      .reduce((a, b) => a + b.owedTotal, 0);
+  }
+  get displayNet() {
+    return this.showEveryone ? this.netAll : this.userNet;
+  }
+  get displayPaidLabel() {
+    return this.showEveryone ? 'Everyone paid' : 'You paid';
+  }
+  get displayOwedLabel() {
+    return this.showEveryone ? 'Everyone owes' : 'You owe';
+  }
+  get displayNetLabel() {
+    return this.showEveryone ? 'Group net (should be 0)' : 'Your net';
+  }
+  toggleTotalsMode() {
+    this.showEveryone = !this.showEveryone;
+  }
+
+  // Determine if toggle should be shown (need more than 1 distinct participant in scope)
+  get canToggleTotals() {
+    const expenses = this.expensesForTotals();
+    const set = new Set<string>();
+    for (const e of expenses) {
+      set.add(e.paidBy);
+      if (e.splitWith) for (const sid of e.splitWith) set.add(sid);
+      if (e.splits) for (const s of e.splits) set.add(s.participantId);
+    }
+    return set.size > 1; // only meaningful if more than one participant
   }
 }

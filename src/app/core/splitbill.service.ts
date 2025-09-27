@@ -16,6 +16,9 @@ import {
 } from './models';
 
 const STORAGE_KEY = 'splitbill:v1';
+function userScopedKey(userId?: string) {
+  return userId ? `${STORAGE_KEY}:u:${userId}` : STORAGE_KEY;
+}
 
 function uuid(): UUID {
   try {
@@ -103,30 +106,25 @@ export class SplitBillService {
   }
 
   private save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    const key = userScopedKey(this.currentUser?.id);
+    localStorage.setItem(key, JSON.stringify(this.state));
   }
 
   private load() {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const uraw = localStorage.getItem(STORAGE_KEY + ':user');
+    if (uraw) {
+      try {
+        this.currentUser = JSON.parse(uraw);
+      } catch {}
+    }
+    // Attempt user-specific first
+    const scoped = userScopedKey(this.currentUser?.id);
+    let raw = localStorage.getItem(scoped);
+    // Fallback: old global key -> migrate if present
+    if (!raw) raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
         this.state = JSON.parse(raw);
-        // Normalize collections in case of older saved state without new fields
-        if (!this.state.participants) this.state.participants = [];
-        if (!this.state.expenses) this.state.expenses = [];
-        if (!this.state.groups) this.state.groups = [];
-        if (!this.state.invites) this.state.invites = [];
-        // Ensure createdAt exists on entities that require it
-        const now = new Date().toISOString();
-        for (const e of this.state.expenses) {
-          if (!(e as any).createdAt) (e as any).createdAt = now;
-        }
-        for (const g of this.state.groups) {
-          if (!(g as any).createdAt) (g as any).createdAt = now;
-        }
-        for (const i of this.state.invites) {
-          if (!(i as any).createdAt) (i as any).createdAt = now;
-        }
       } catch {
         this.state = {
           participants: [],
@@ -136,18 +134,26 @@ export class SplitBillService {
         };
       }
     }
-    const uraw = localStorage.getItem(STORAGE_KEY + ':user');
-    if (uraw)
-      try {
-        this.currentUser = JSON.parse(uraw);
-        if (this.currentUser && !(this.currentUser as any).createdAt) {
-          (this.currentUser as any).createdAt = new Date().toISOString();
-          localStorage.setItem(
-            STORAGE_KEY + ':user',
-            JSON.stringify(this.currentUser)
-          );
-        }
-      } catch {}
+    // Normalize
+    if (!this.state.participants) this.state.participants = [];
+    if (!this.state.expenses) this.state.expenses = [];
+    if (!this.state.groups) this.state.groups = [];
+    if (!this.state.invites) this.state.invites = [];
+    const now = new Date().toISOString();
+    for (const e of this.state.expenses)
+      if (!(e as any).createdAt) (e as any).createdAt = now;
+    for (const g of this.state.groups)
+      if (!(g as any).createdAt) (g as any).createdAt = now;
+    for (const i of this.state.invites)
+      if (!(i as any).createdAt) (i as any).createdAt = now;
+    // If we loaded from legacy key and have a current user, migrate to scoped key
+    if (
+      this.currentUser &&
+      localStorage.getItem(STORAGE_KEY) &&
+      !localStorage.getItem(scoped)
+    ) {
+      localStorage.setItem(scoped, JSON.stringify(this.state));
+    }
   }
 
   reset() {
@@ -206,6 +212,7 @@ export class SplitBillService {
       p.email = this.currentUser!.email;
       this.save();
     }
+    this.save(); // ensure state persisted under new scoped key
     return this.currentUser;
   }
   setUserImage(url: string) {
@@ -238,6 +245,7 @@ export class SplitBillService {
       this.state.participants.push(p);
       this.save();
     }
+    this.save();
     return u;
   }
   logout() {
@@ -325,9 +333,18 @@ export class SplitBillService {
 
   // Expenses
   listExpenses(includeResolved = true) {
-    return includeResolved
+    const base = includeResolved
       ? [...this.state.expenses]
       : this.state.expenses.filter((e) => !e.resolved);
+    const u = this.getUser();
+    if (!u) return base; // before login show all (or could be empty)
+    const uid = u.id;
+    return base.filter((e) => {
+      if (e.paidBy === uid) return true;
+      if (e.splitWith?.includes(uid)) return true;
+      if (e.splits?.some((s) => s.participantId === uid)) return true;
+      return false;
+    });
   }
   addExpense(e: Omit<Expense, 'id' | 'createdAt'>) {
     const ex: Expense = {
@@ -361,15 +378,17 @@ export class SplitBillService {
             ? +ex.paidBy
             : undefined;
           if (paidByNumeric) payload.paid_by_user_id = paidByNumeric;
-          // Collect unique participant ids from splitWith or splits
           const candidateIds = new Set<string>();
+          if (ex.paidBy) candidateIds.add(ex.paidBy);
           (ex.splitWith || []).forEach((id) => candidateIds.add(id));
           (ex.splits || []).forEach((s) => candidateIds.add(s.participantId));
           for (const cid of candidateIds) {
             if (Number.isFinite(+cid)) participantUserIds.push(+cid);
           }
           if (participantUserIds.length)
-            payload.participant_user_ids = participantUserIds;
+            payload.participant_user_ids = Array.from(
+              new Set(participantUserIds)
+            );
           if (ex.splits && ex.splits.length) {
             const splitsPayload: any[] = [];
             for (const s of ex.splits) {
@@ -418,13 +437,16 @@ export class SplitBillService {
         const participantUserIds: any[] = [];
         if (Number.isFinite(+e.paidBy)) payload.paid_by_user_id = +e.paidBy;
         const candidateIds = new Set<string>();
+        if (e.paidBy) candidateIds.add(e.paidBy);
         (e.splitWith || []).forEach((id) => candidateIds.add(id));
         (e.splits || []).forEach((s) => candidateIds.add(s.participantId));
         for (const cid of candidateIds) {
           if (Number.isFinite(+cid)) participantUserIds.push(+cid);
         }
         if (participantUserIds.length)
-          payload.participant_user_ids = participantUserIds;
+          payload.participant_user_ids = Array.from(
+            new Set(participantUserIds)
+          );
         if (e.splits && e.splits.length) {
           const splitsPayload: any[] = [];
           for (const s of e.splits) {
@@ -785,6 +807,47 @@ export class SplitBillService {
 
   // Group-scoped expenses
   listExpensesForGroup(groupId: UUID): Expense[] {
-    return this.state.expenses.filter((e) => e.groupId === groupId);
+    const u = this.getUser();
+    return this.state.expenses
+      .filter((e) => e.groupId === groupId)
+      .filter((e) => {
+        if (!u) return true;
+        if (e.paidBy === u.id) return true;
+        if (e.splitWith?.includes(u.id)) return true;
+        if (e.splits?.some((s) => s.participantId === u.id)) return true;
+        return false;
+      });
+  }
+  async addParticipantByEmail(email: string) {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) return null;
+    // Avoid adding if already present
+    const existing = this.state.participants.find(
+      (p) => (p.email || '').toLowerCase() === trimmed
+    );
+    if (existing) return existing;
+    try {
+      const base = this.auth?.apiBaseUrl;
+      const token = this.auth?.token;
+      if (!base || !token) return null;
+      const res: any = await firstValueFrom(
+        this.http.get(`${base}/users`, {
+          params: { email: trimmed },
+          headers: this.authHeader(),
+        })
+      );
+      const user = res?.data;
+      if (!user) return null; // user not registered
+      const participant: Participant = {
+        id: String(user.id) as any,
+        name: user.name || trimmed,
+        email: user.email,
+      };
+      this.state.participants.push(participant);
+      this.save();
+      return participant;
+    } catch {
+      return null;
+    }
   }
 }

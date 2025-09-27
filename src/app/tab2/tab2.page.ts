@@ -11,6 +11,8 @@ import {
   IonSelect,
   IonSelectOption,
   IonCheckbox,
+  IonAccordionGroup,
+  IonAccordion,
 } from '@ionic/angular/standalone';
 import { SplitBillService } from '../core/splitbill.service';
 import { Expense, Participant, UUID, Group } from '../core/models';
@@ -19,6 +21,7 @@ import { Expense, Participant, UUID, Group } from '../core/models';
   selector: 'app-tab2',
   templateUrl: 'tab2.page.html',
   styleUrls: ['tab2.page.scss'],
+  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -31,6 +34,8 @@ import { Expense, Participant, UUID, Group } from '../core/models';
     IonSelect,
     IonSelectOption,
     IonCheckbox,
+    IonAccordionGroup,
+    IonAccordion,
   ],
 })
 export class Tab2Page {
@@ -57,6 +62,7 @@ export class Tab2Page {
     'Entertainment',
     'Other',
   ];
+  soloMode = false; // new flag
   private sb = inject(SplitBillService);
 
   constructor() {
@@ -73,6 +79,23 @@ export class Tab2Page {
     if (!this.paidBy && this.availableParticipants.length)
       this.paidBy = this.availableParticipants[0].id;
     if (!this.date) this.date = new Date().toISOString().slice(0, 10);
+    // determine soloMode: only one global participant OR selected group has 1 member
+    if (this.groupId) {
+      const g = this.groups.find((gg) => gg.id === this.groupId);
+      this.soloMode = !!g && g.memberIds.length === 1;
+    } else {
+      this.soloMode = this.participants.length === 1;
+    }
+    if (this.soloMode) {
+      // force payer to sole participant
+      if (this.availableParticipants.length) {
+        this.paidBy = this.availableParticipants[0].id;
+      }
+      // auto-select self as splitWith to avoid empty share logic, but we will treat it as personal
+      this.splitWith = { [this.paidBy as string]: true };
+      this.splitMode = 'equal';
+      this.splitsInput = {};
+    }
   }
 
   ionViewWillEnter() {
@@ -130,18 +153,20 @@ export class Tab2Page {
       category: this.category || undefined,
       date: this.date || new Date().toISOString().slice(0, 10),
     };
-    if (this.splitMode === 'percentage') {
-      const splits = shareIds.map((id) => ({
-        participantId: id,
-        percentage: +(this.splitsInput[id] || 0),
-      }));
-      payload.splits = splits;
-    } else if (this.splitMode === 'custom') {
-      const splits = shareIds.map((id) => ({
-        participantId: id,
-        amount: +parseFloat(String(this.splitsInput[id] || 0)).toFixed(2),
-      }));
-      payload.splits = splits;
+    if (!this.soloMode) {
+      if (this.splitMode === 'percentage') {
+        const splits = shareIds.map((id) => ({
+          participantId: id,
+          percentage: +(this.splitsInput[id] || 0),
+        }));
+        payload.splits = splits;
+      } else if (this.splitMode === 'custom') {
+        const splits = shareIds.map((id) => ({
+          participantId: id,
+          amount: +parseFloat(String(this.splitsInput[id] || 0)).toFixed(2),
+        }));
+        payload.splits = splits;
+      }
     }
     this.sb.addExpense(payload);
     this.description = '';
@@ -171,6 +196,7 @@ export class Tab2Page {
     const amt = parseFloat(this.amount);
     if (!this.description.trim() || !this.paidBy || !isFinite(amt) || amt <= 0)
       return true;
+    if (this.soloMode) return false; // only validation needed above
     const shareIds = Object.keys(this.splitWith).filter(
       (id) => this.splitWith[id]
     );

@@ -41,6 +41,9 @@ export class Tab1Page {
   newGroupName = '';
   inviteEmail = '';
   pendingInvites: Invite[] = [];
+  userInviteEmail = '';
+  userInviteStatus: 'idle' | 'searching' | 'added' | 'notfound' | 'error' =
+    'idle';
   private sb = inject(SplitBillService);
 
   constructor() {
@@ -53,11 +56,19 @@ export class Tab1Page {
     this.myGroups = this.sb.listGroupsForCurrentUser();
     this.pendingInvites = this.sb.listPendingInvitesForCurrentUser();
   }
-  add() {
-    if (this.name.trim()) {
-      this.sb.addParticipant(this.name);
-      this.name = '';
+  async addUserByEmail() {
+    const email = this.userInviteEmail.trim();
+    if (!email) return;
+    this.userInviteStatus = 'searching';
+    const p = await this.sb.addParticipantByEmail(email);
+    if (p) {
+      this.userInviteStatus = 'added';
+      this.userInviteEmail = '';
       this.refresh();
+      setTimeout(() => (this.userInviteStatus = 'idle'), 2000);
+    } else {
+      this.userInviteStatus = 'notfound';
+      setTimeout(() => (this.userInviteStatus = 'idle'), 3000);
     }
   }
   remove(id: string) {
@@ -69,7 +80,6 @@ export class Tab1Page {
   ionViewWillEnter() {
     this.refresh();
   }
-
   // Groups
   createGroup() {
     const name = this.newGroupName.trim();
