@@ -34,6 +34,15 @@ export class LoginPage {
   private sb = inject(SplitBillService);
   private auth = inject(AuthService);
   private router = inject(Router);
+
+  token = localStorage.getItem('apiToken');
+
+  constructor() {
+    if (this.token) {
+      this.router.navigateByUrl('/tabs/tab3');
+    }
+  }
+
   login() {
     if (!this.email.trim() || !this.password) return;
     this.auth.login(this.email, this.password).subscribe({
@@ -47,6 +56,7 @@ export class LoginPage {
           res.user.starting_balance,
           (res.user as any).profile_image_url
         );
+        localStorage.setItem('apiToken', res.token);
         this.router.navigateByUrl('/tabs/tab3');
       },
       error: (err) => {

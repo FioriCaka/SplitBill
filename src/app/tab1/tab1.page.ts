@@ -18,6 +18,7 @@ import { Group, Invite, Participant, UUID } from '../core/models';
   selector: 'app-tab1',
   templateUrl: 'tab1.page.html',
   styleUrls: ['tab1.page.scss'],
+  standalone: true,
   imports: [
     CommonModule,
     IonContent,
