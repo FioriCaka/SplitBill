@@ -62,7 +62,7 @@ export class Tab2Page {
     'Entertainment',
     'Other',
   ];
-  soloMode = false; // new flag
+  soloMode = false;
   private sb = inject(SplitBillService);
 
   constructor() {

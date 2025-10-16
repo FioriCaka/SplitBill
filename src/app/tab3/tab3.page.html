@@ -7,6 +7,45 @@
   <div class="-mt-10 p-4 space-y-5">
     <!-- Recent Activity -->
     <div
+      *ngIf="invites.length"
+      class="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-300 dark:bg-amber-700 p-3"
+    >
+      <div class="font-semibold mb-2">Invitations</div>
+      <ion-list class="rounded-md overflow-hidden">
+        <ion-item *ngFor="let inv of invites">
+          <ion-label>
+            Group invite to
+            <strong>{{ inv.group?.name || 'a group' }}</strong>
+          </ion-label>
+          <ion-button
+            size="small"
+            color="success"
+            (click)="acceptInvite(inv)"
+            slot="end"
+            >Accept</ion-button
+          >
+          <ion-button
+            size="small"
+            color="medium"
+            (click)="declineInvite(inv)"
+            slot="end"
+            >Decline</ion-button
+          >
+        </ion-item>
+      </ion-list>
+    </div>
+    <div
+      class="flex items-center justify-between rounded-lg bg-white dark:bg-neutral-900 shadow-lg p-3 dark:text-slate-100"
+      *ngIf="balances.length"
+    >
+      <div class="text-xs text-gray-500 dark:text-gray-400">
+        Viewing: <strong>{{ showEveryone ? 'Everyone' : 'You' }}</strong>
+      </div>
+      <ion-button size="small" fill="outline" (click)="toggleTotalsMode()">
+        {{ showEveryone ? 'Switch to You' : 'Switch to Everyone' }}
+      </ion-button>
+    </div>
+    <div
       class="rounded-lg bg-white dark:bg-neutral-900 shadow-lg p-3 dark:text-slate-100"
     >
       <div class="text-sm font-semibold mb-2">Recent activity</div>
@@ -40,15 +79,6 @@
           No recent activity.
         </div>
       </ng-template>
-    </div>
-
-    <div class="flex items-center justify-between" *ngIf="canToggleTotals">
-      <div class="text-xs text-gray-500 dark:text-gray-400">
-        Viewing: <strong>{{ showEveryone ? 'Everyone' : 'You' }}</strong>
-      </div>
-      <ion-button size="small" fill="outline" (click)="toggleTotalsMode()">
-        {{ showEveryone ? 'Switch to You' : 'Switch to Everyone' }}
-      </ion-button>
     </div>
 
     <div class="grid grid-cols-2 gap-3">
@@ -96,31 +126,6 @@
     </div>
 
     <!-- Invites -->
-    <div
-      *ngIf="invites.length"
-      class="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-300/30 dark:bg-amber-900/30 p-3"
-    >
-      <div class="font-semibold mb-2">Invitations</div>
-      <ion-list class="rounded-md overflow-hidden">
-        <ion-item *ngFor="let inv of invites">
-          <ion-label>Group invite for {{ inv.email }}</ion-label>
-          <ion-button
-            size="small"
-            color="success"
-            (click)="acceptInvite(inv)"
-            slot="end"
-            >Accept</ion-button
-          >
-          <ion-button
-            size="small"
-            color="medium"
-            (click)="declineInvite(inv)"
-            slot="end"
-            >Decline</ion-button
-          >
-        </ion-item>
-      </ion-list>
-    </div>
 
     <!-- Group filter & expense chooser -->
     <ion-accordion-group class="rounded-xl shadow-lg">

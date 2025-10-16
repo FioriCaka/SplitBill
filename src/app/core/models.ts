@@ -68,9 +68,19 @@ export interface Group {
 export type InviteStatus = 'pending' | 'accepted' | 'declined';
 export interface Invite {
   id: UUID;
-  email: string; // invite target email
+  email: string;
   groupId: UUID;
-  invitedByParticipantId: UUID;
   status: InviteStatus;
   createdAt: string;
+  invitedByUserId?: string;
+  invitedBy?: {
+    id: string;
+    name?: string;
+    email?: string;
+  };
+  group?: {
+    id: UUID;
+    name: string;
+  };
+  canRespond?: boolean;
 }

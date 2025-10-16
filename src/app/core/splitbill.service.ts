@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BackendApiService } from './backend.service';
 import { AuthService } from './auth.service';
+import { PushService } from './push.service';
 import { firstValueFrom } from 'rxjs';
 import {
   State,
@@ -12,6 +13,7 @@ import {
   SettlementSuggestion,
   Group,
   Invite,
+  InviteStatus,
   User,
 } from './models';
 
@@ -49,11 +51,42 @@ function uuid(): UUID {
     `${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`) as UUID;
 }
 
+type ApiInvite = {
+  id: string;
+  email: string;
+  group_id: string;
+  status: string;
+  invited_by_user_id?: number;
+  created_at?: string;
+  invited_by?: {
+    id: number;
+    name?: string;
+    email?: string;
+  };
+  group?: {
+    id: string;
+    name: string;
+  };
+  can_respond?: boolean;
+};
+
+type ApiGroup = {
+  id: string;
+  name: string;
+  created_at?: string;
+  members?: Array<{
+    id: string | number;
+    name?: string;
+    email?: string;
+  }>;
+};
+
 @Injectable({ providedIn: 'root' })
 export class SplitBillService {
   private api = inject(BackendApiService);
   private http = inject(HttpClient);
   private auth = inject(AuthService);
+  private push: PushService = inject(PushService);
 
   private authHeader(): HttpHeaders {
     const token = this.auth.token;
@@ -66,9 +99,22 @@ export class SplitBillService {
     invites: [],
   };
   private currentUser: User | null = null;
+  private invitesSyncedAt = 0;
+  private syncingInvites = false;
+  private groupsSyncedAt = 0;
+  private syncingGroups = false;
 
   constructor() {
     this.load();
+    void this.push.initialize();
+    this.push.inviteNotifications$.subscribe(() => {
+      void this.syncInvites(true);
+    });
+    if (this.currentUser && this.auth.token) {
+      void this.push.onAuthenticated();
+      void this.syncInvites();
+      void this.syncGroups();
+    }
   }
 
   // Replace a participant id everywhere it appears across state
@@ -96,11 +142,6 @@ export class SplitBillService {
       if (!Array.isArray(g.memberIds)) continue;
       g.memberIds = g.memberIds.map((sid) => (sid === oldId ? newId : sid));
       g.memberIds = Array.from(new Set(g.memberIds));
-    }
-    // Invites: invitedByParticipantId (if used locally)
-    for (const inv of this.state.invites || []) {
-      if ((inv as any).invitedByParticipantId === oldId)
-        (inv as any).invitedByParticipantId = newId;
     }
     this.save();
   }
@@ -161,6 +202,143 @@ export class SplitBillService {
     this.save();
   }
 
+  async syncInvites(force = false): Promise<void> {
+    const base = this.auth?.apiBaseUrl;
+    const token = this.auth?.token;
+    if (!base || !token) return;
+    if (this.syncingInvites) return;
+    const now = Date.now();
+    if (!force && this.invitesSyncedAt && now - this.invitesSyncedAt < 10000) {
+      return;
+    }
+
+    this.syncingInvites = true;
+    try {
+      const res = await firstValueFrom(
+        this.http.get<ApiInvite[]>(`${base}/invites`, {
+          headers: this.authHeader(),
+        })
+      );
+      this.state.invites = res.map((inv) => this.mapInvite(inv));
+      this.invitesSyncedAt = Date.now();
+      this.save();
+    } catch (err) {
+      console.warn('Failed to sync invites', err);
+    } finally {
+      this.syncingInvites = false;
+    }
+  }
+
+  async syncGroups(force = false): Promise<void> {
+    const base = this.auth?.apiBaseUrl;
+    const token = this.auth?.token;
+    if (!base || !token) return;
+    if (this.syncingGroups) return;
+    const now = Date.now();
+    if (!force && this.groupsSyncedAt && now - this.groupsSyncedAt < 10000) {
+      return;
+    }
+
+    this.syncingGroups = true;
+    try {
+      const res = await firstValueFrom(
+        this.http.get<ApiGroup[]>(`${base}/groups`, {
+          headers: this.authHeader(),
+        })
+      );
+
+      const existingGroups = new Map<UUID, Group>(
+        (this.state.groups || []).map((g) => [g.id, { ...g }])
+      );
+      const participantsById = new Map<UUID, Participant>(
+        (this.state.participants || []).map((p) => [p.id, { ...p }])
+      );
+
+      const remoteIds = new Set<UUID>();
+      const updatedGroups: Group[] = res.map((g) => {
+        const memberIds: UUID[] = [];
+        for (const member of g.members || []) {
+          const id = String(member.id) as UUID;
+          memberIds.push(id);
+          const cleanName = (member.name || '').trim();
+          const fallbackName = cleanName || member.email || 'Member';
+          const existing = participantsById.get(id);
+          if (existing) {
+            existing.name = cleanName || existing.name || fallbackName;
+            if (member.email) existing.email = member.email;
+          } else {
+            participantsById.set(id, {
+              id,
+              name: fallbackName,
+              email: member.email || undefined,
+            });
+          }
+        }
+
+        const prior = existingGroups.get(g.id as UUID);
+        const createdAt =
+          g.created_at || prior?.createdAt || new Date().toISOString();
+
+        const groupObj: Group = {
+          id: g.id as UUID,
+          name: g.name,
+          memberIds: Array.from(new Set(memberIds)),
+          createdAt,
+        };
+
+        remoteIds.add(groupObj.id);
+        return groupObj;
+      });
+
+      for (const [id, group] of existingGroups.entries()) {
+        if (!remoteIds.has(id)) {
+          updatedGroups.push(group);
+        }
+      }
+
+      updatedGroups.sort((a, b) => a.name.localeCompare(b.name));
+
+      this.state.groups = updatedGroups;
+      this.state.participants = Array.from(participantsById.values());
+      this.groupsSyncedAt = Date.now();
+      this.save();
+    } catch (err) {
+      console.warn('Failed to sync groups', err);
+    } finally {
+      this.syncingGroups = false;
+    }
+  }
+
+  private mapInvite(invite: ApiInvite): Invite {
+    return {
+      id: invite.id as UUID,
+      email: invite.email,
+      groupId: invite.group_id as UUID,
+      status: (invite.status as InviteStatus) || 'pending',
+      createdAt:
+        invite.created_at ||
+        (this.state.invites?.find((i) => i.id === invite.id)?.createdAt ??
+          new Date().toISOString()),
+      invitedByUserId: invite.invited_by_user_id
+        ? String(invite.invited_by_user_id)
+        : undefined,
+      invitedBy: invite.invited_by
+        ? {
+            id: String(invite.invited_by.id),
+            name: invite.invited_by.name || undefined,
+            email: invite.invited_by.email || undefined,
+          }
+        : undefined,
+      group: invite.group
+        ? {
+            id: invite.group.id as UUID,
+            name: invite.group.name,
+          }
+        : undefined,
+      canRespond: invite.can_respond ?? undefined,
+    };
+  }
+
   // Auth
   getUser() {
     return this.currentUser;
@@ -213,6 +391,9 @@ export class SplitBillService {
       this.save();
     }
     this.save(); // ensure state persisted under new scoped key
+    void this.push.onAuthenticated();
+    void this.syncInvites(true);
+    void this.syncGroups(true);
     return this.currentUser;
   }
   setUserImage(url: string) {
@@ -246,11 +427,19 @@ export class SplitBillService {
       this.save();
     }
     this.save();
+    void this.push.onAuthenticated();
+    void this.syncGroups(true);
     return u;
   }
   logout() {
     this.currentUser = null;
     localStorage.removeItem(STORAGE_KEY + ':user');
+    void this.push.onLogout();
+    this.invitesSyncedAt = 0;
+    this.groupsSyncedAt = 0;
+    this.state.invites = [];
+    this.state.groups = [];
+    this.save();
   }
 
   updateUser(name: string, email: string) {
@@ -766,42 +955,136 @@ export class SplitBillService {
     this.save();
   }
 
+  private ensureGroupPlaceholder(details: { id: UUID; name: string }): Group {
+    if (!this.state.groups) this.state.groups = [];
+    let group = this.state.groups.find((g) => g.id === details.id);
+    if (!group) {
+      group = {
+        id: details.id,
+        name: details.name,
+        memberIds: [],
+        createdAt: new Date().toISOString(),
+      };
+      this.state.groups.push(group);
+    } else if (!group.name) {
+      group.name = details.name;
+    }
+    return group;
+  }
+
   // Invites
   listInvites(): Invite[] {
-    return [...(this.state.invites || [])];
+    if (!this.state.invites) this.state.invites = [];
+    return [...this.state.invites].sort((a, b) =>
+      (b.createdAt || '').localeCompare(a.createdAt || '')
+    );
   }
   listPendingInvitesForCurrentUser(): Invite[] {
     const u = this.getUser();
     if (!u) return [];
     const lower = u.email.toLowerCase();
-    return this.listInvites().filter(
-      (i) => i.status === 'pending' && i.email.toLowerCase() === lower
-    );
+    return this.listInvites().filter((i) => {
+      const targetMatches = i.email?.toLowerCase() === lower;
+      const canRespond =
+        i.canRespond === undefined ? targetMatches : Boolean(i.canRespond);
+      return i.status === 'pending' && canRespond;
+    });
   }
-  inviteToGroup(
+
+  async inviteToGroup(
     groupId: UUID,
-    invitedEmail: string,
-    invitedByParticipantId: UUID
-  ) {
+    invitedEmail: string
+  ): Promise<Invite | null> {
     if (!this.state.invites) this.state.invites = [];
-    const inv: Invite = {
+    const email = invitedEmail.trim();
+    if (!email) return null;
+
+    const groupDetails = this.state.groups?.find((g) => g.id === groupId);
+
+    const base = this.auth?.apiBaseUrl;
+    const token = this.auth?.token;
+    if (base && token) {
+      try {
+        const payload: Record<string, unknown> = {
+          group_id: groupId,
+          email,
+        };
+        if (groupDetails?.name) {
+          payload['group_name'] = groupDetails.name;
+        }
+        const response = await firstValueFrom(
+          this.http.post<ApiInvite>(`${base}/invites`, payload, {
+            headers: this.authHeader(),
+          })
+        );
+        await this.syncInvites(true);
+        return (
+          this.state.invites?.find((i) => i.id === (response.id as UUID)) ||
+          null
+        );
+      } catch (err) {
+        console.warn('Failed to create invite via backend', err);
+      }
+    }
+
+    const fallback: Invite = {
       id: uuid(),
       groupId,
-      email: invitedEmail.trim(),
-      invitedByParticipantId,
+      email,
       status: 'pending',
       createdAt: new Date().toISOString(),
+      invitedByUserId: this.currentUser?.id,
+      invitedBy: this.currentUser
+        ? {
+            id: this.currentUser.id,
+            name: this.currentUser.name,
+            email: this.currentUser.email,
+          }
+        : undefined,
+      group: groupDetails
+        ? {
+            id: groupId,
+            name: groupDetails.name,
+          }
+        : undefined,
+      canRespond: false,
     };
-    this.state.invites!.push(inv);
+    this.state.invites.push(fallback);
     this.save();
-    return inv;
+    return fallback;
   }
-  respondInvite(inviteId: UUID, accept: boolean, participantId?: UUID) {
-    const inv = this.state.invites!.find((i) => i.id === inviteId);
+
+  async respondInvite(inviteId: UUID, accept: boolean): Promise<void> {
+    if (!this.state.invites) this.state.invites = [];
+    const base = this.auth?.apiBaseUrl;
+    const token = this.auth?.token;
+    if (base && token) {
+      try {
+        await firstValueFrom(
+          this.http.post(
+            `${base}/invites/${inviteId}/respond`,
+            { accept },
+            { headers: this.authHeader() }
+          )
+        );
+        await this.syncInvites(true);
+        await this.syncGroups(true);
+      } catch (err) {
+        console.warn('Failed to respond to invite via backend', err);
+      }
+    }
+
+    const inv = this.state.invites.find((i) => i.id === inviteId);
     if (!inv) return;
     inv.status = accept ? 'accepted' : 'declined';
-    if (accept && participantId)
-      this.addParticipantToGroup(inv.groupId, participantId);
+    inv.canRespond = false;
+    if (accept && inv.group) {
+      const group = this.ensureGroupPlaceholder(inv.group);
+      const userId = this.currentUser?.id as UUID | undefined;
+      if (userId && !group.memberIds.includes(userId)) {
+        group.memberIds.push(userId);
+      }
+    }
     this.save();
   }
 

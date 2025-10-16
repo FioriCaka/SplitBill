@@ -47,10 +47,11 @@ export class Tab1Page {
   private sb = inject(SplitBillService);
 
   constructor() {
-    this.refresh();
+    void this.refresh();
   }
 
-  refresh() {
+  async refresh() {
+    await this.sb.syncInvites();
     this.participants = this.sb.listParticipants();
     this.me = this.sb.getCurrentParticipant();
     this.myGroups = this.sb.listGroupsForCurrentUser();
@@ -64,7 +65,7 @@ export class Tab1Page {
     if (p) {
       this.userInviteStatus = 'added';
       this.userInviteEmail = '';
-      this.refresh();
+      await this.refresh();
       setTimeout(() => (this.userInviteStatus = 'idle'), 2000);
     } else {
       this.userInviteStatus = 'notfound';
@@ -74,11 +75,11 @@ export class Tab1Page {
   remove(id: string) {
     if (this.me && id === this.me.id) return; // don't remove current user
     this.sb.removeParticipant(id);
-    this.refresh();
+    void this.refresh();
   }
 
   ionViewWillEnter() {
-    this.refresh();
+    void this.refresh();
   }
   // Groups
   createGroup() {
@@ -100,27 +101,25 @@ export class Tab1Page {
     const ids = new Set(g.memberIds);
     return this.participants.filter((p) => ids.has(p.id));
   }
-  invite() {
+  async invite() {
     const email = this.inviteEmail.trim();
     if (!email || !this.selectedGroupId) return;
-    const me = this.sb.getCurrentParticipant();
-    if (!me) return;
-    this.sb.inviteToGroup(this.selectedGroupId as UUID, email, me.id);
+    await this.sb.inviteToGroup(this.selectedGroupId as UUID, email);
     this.inviteEmail = '';
-    this.refresh();
+    await this.refresh();
   }
 
   removeMember(memberId: UUID) {
     if (!this.selectedGroupId) return;
     this.sb.removeParticipantFromGroup(this.selectedGroupId as UUID, memberId);
-    this.refresh();
+    void this.refresh();
   }
   leaveGroup() {
     const me = this.sb.getCurrentParticipant();
     if (!me || !this.selectedGroupId) return;
     this.sb.removeParticipantFromGroup(this.selectedGroupId as UUID, me.id);
     this.selectedGroupId = '';
-    this.refresh();
+    void this.refresh();
   }
 
   isMe(p: Participant) {

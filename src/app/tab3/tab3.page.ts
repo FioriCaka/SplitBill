@@ -68,7 +68,7 @@ export class Tab3Page {
   showEveryone = false;
 
   constructor() {
-    this.refresh();
+    void this.refresh();
   }
 
   private mapParticipants() {
@@ -77,7 +77,8 @@ export class Tab3Page {
     );
   }
 
-  refresh() {
+  async refresh() {
+    await this.sb.syncInvites();
     this.mapParticipants();
     const u = this.sb.getUser();
     this.userName = u?.name || 'there';
@@ -153,30 +154,28 @@ export class Tab3Page {
   }
 
   ionViewWillEnter() {
-    this.refresh();
+    void this.refresh();
   }
 
   onSelectChange(ids: string[] | undefined) {
     this.selectedExpenseIds = Array.isArray(ids) ? ids : [];
-    this.refresh();
+    void this.refresh();
   }
 
   onSelectGroup(id: string | undefined) {
     this.selectedGroupId = id || '';
     this.selectedExpenseIds = [];
-    this.refresh();
+    void this.refresh();
   }
 
-  acceptInvite(inv: Invite) {
-    const p = this.sb.getCurrentParticipant();
-    if (!p) return;
-    this.sb.respondInvite(inv.id, true, p.id);
-    this.refresh();
+  async acceptInvite(inv: Invite) {
+    await this.sb.respondInvite(inv.id, true);
+    await this.refresh();
   }
 
-  declineInvite(inv: Invite) {
-    this.sb.respondInvite(inv.id, false);
-    this.refresh();
+  async declineInvite(inv: Invite) {
+    await this.sb.respondInvite(inv.id, false);
+    await this.refresh();
   }
 
   get totalPaid() {
@@ -251,17 +250,5 @@ export class Tab3Page {
   }
   toggleTotalsMode() {
     this.showEveryone = !this.showEveryone;
-  }
-
-  // Determine if toggle should be shown (need more than 1 distinct participant in scope)
-  get canToggleTotals() {
-    const expenses = this.expensesForTotals();
-    const set = new Set<string>();
-    for (const e of expenses) {
-      set.add(e.paidBy);
-      if (e.splitWith) for (const sid of e.splitWith) set.add(sid);
-      if (e.splits) for (const s of e.splits) set.add(s.participantId);
-    }
-    return set.size > 1; // only meaningful if more than one participant
   }
 }

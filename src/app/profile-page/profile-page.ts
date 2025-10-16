@@ -118,6 +118,7 @@ export class ProfilePage implements AfterViewInit, OnDestroy {
   }
   logout() {
     this.sb.logout();
+    this.auth.logout();
     this.router.navigateByUrl('/login');
   }
 
