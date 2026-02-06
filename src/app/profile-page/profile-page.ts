@@ -17,7 +17,7 @@ import {
   IonAccordionGroup,
   IonIcon,
 } from '@ionic/angular/standalone';
-import { CommonModule } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SplitBillService } from '../core/splitbill.service';
 import { BackendApiService } from '../core/backend.service';
@@ -29,7 +29,7 @@ import { createOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
   selector: 'app-profile',
   standalone: true,
   imports: [
-    CommonModule,
+    CurrencyPipe,
     FormsModule,
     IonContent,
     IonButton,
@@ -270,12 +270,13 @@ export class ProfilePage implements AfterViewInit, OnDestroy {
     ) as HTMLInputElement;
     const toggleIcon = document.getElementById(
       'togglePasswordIcon'
-    ) as HTMLIonIconElement;
+    ) as HTMLElement | null;
     if (passwordInput && toggleIcon) {
       passwordInput.type =
         passwordInput.type === 'password' ? 'text' : 'password';
-      toggleIcon.name =
+      const iconName =
         passwordInput.type === 'password' ? 'eye-off-outline' : 'eye-outline';
+      toggleIcon.setAttribute('name', iconName);
     }
   }
 

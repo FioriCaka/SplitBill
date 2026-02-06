@@ -8,30 +8,25 @@
     <div
       class="rounded-xl bg-white dark:bg-neutral-900 shadow-lg p-2 dark:text-slate-100"
     >
-      <ion-list
-        *ngIf="expenses.length; else noexp"
-        class="rounded-md overflow-hidden dark:bg-transparent"
-      >
-        <ion-item
-          *ngFor="let e of expenses"
-          class="w-full"
-          [class.opacity-60]="e.resolved"
-        >
+      @if (expenses.length) {
+      <ion-list class="rounded-md overflow-hidden dark:bg-transparent">
+        @for (e of expenses; track e.id) {
+        <ion-item class="w-full" [class.opacity-60]="e.resolved">
           <ion-label>
             <div class="font-medium" [class.line-through]="e.resolved">
               {{ e.description }} - {{ e.amount | number:'1.2-2' }}
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
               {{ e.createdAt | date:'short' }}
-              <span
-                *ngIf="e.resolved"
-                class="ml-2 text-green-600 dark:text-green-400"
+              @if (e.resolved) {
+              <span class="ml-2 text-green-600 dark:text-green-400"
                 >(resolved)</span
               >
+              }
             </div>
           </ion-label>
+          @if (!e.resolved) {
           <ion-button
-            *ngIf="!e.resolved"
             fill="clear"
             color="success"
             slot="end"
@@ -40,8 +35,9 @@
           >
             Resolve
           </ion-button>
+          }
+          @if (e.resolved) {
           <ion-button
-            *ngIf="e.resolved"
             fill="clear"
             color="medium"
             slot="end"
@@ -50,6 +46,7 @@
           >
             Unresolve
           </ion-button>
+          }
           <ion-button
             fill="clear"
             color="danger"
@@ -59,12 +56,13 @@
             >Remove</ion-button
           >
         </ion-item>
+        }
       </ion-list>
-      <ng-template #noexp>
-        <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-6">
-          No expenses yet.
-        </div>
-      </ng-template>
+      } @else {
+      <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-6">
+        No expenses yet.
+      </div>
+      }
     </div>
     <ion-accordion-group class="rounded-xl shadow-lg">
       <ion-accordion value="add" class="rounded-xl">
@@ -78,22 +76,24 @@
           slot="content"
           class="rounded-xl bg-white dark:bg-neutral-900 shadow p-4 space-y-4 dark:text-slate-100"
         >
-          <ion-item *ngIf="groups.length">
+          @if (groups.length) {
+          <ion-item>
             <ion-label>Group</ion-label>
             <ion-select
               [(ngModel)]="groupId"
               interface="popover"
               placeholder="All participants"
-              (ionChange)="onSelectGroup($event.detail.value)"
+              (ionChange)="onSelectGroup($any($event).detail.value)"
             >
               <ion-select-option [value]="''"
                 >All participants</ion-select-option
               >
-              <ion-select-option *ngFor="let g of groups" [value]="g.id"
-                >{{ g.name }}</ion-select-option
-              >
+              @for (g of groups; track g.id) {
+              <ion-select-option [value]="g.id">{{ g.name }}</ion-select-option>
+              }
             </ion-select>
           </ion-item>
+          }
           <ion-item>
             <ion-label position="stacked">Description</ion-label>
             <ion-input
@@ -124,9 +124,9 @@
               interface="popover"
               placeholder="Select category"
             >
-              <ion-select-option *ngFor="let c of categories" [value]="c"
-                >{{ c }}</ion-select-option
-              >
+              @for (c of categories; track c) {
+              <ion-select-option [value]="c">{{ c }}</ion-select-option>
+              }
             </ion-select>
           </ion-item>
 
@@ -138,34 +138,33 @@
               placeholder="Select payer"
               [disabled]="soloMode"
             >
-              <ion-select-option
-                *ngFor="let p of availableParticipants"
-                [value]="p.id"
-                >{{ p.name }}</ion-select-option
-              >
+              @for (p of availableParticipants; track p.id) {
+              <ion-select-option [value]="p.id">{{ p.name }}</ion-select-option>
+              }
             </ion-select>
           </ion-item>
 
-          <div
-            *ngIf="soloMode"
-            class="text-xs rounded bg-indigo-50 dark:bg-indigo-900/30 p-2 text-indigo-700 dark:text-indigo-300"
-          >
+          @if (soloMode) {
+          <div class="text-xs rounded bg-indigo-50 dark:bg-indigo-900/30 p-2 text-indigo-700 dark:text-indigo-300">
             Solo mode active: expense will be recorded as personal (no splits
             needed).
           </div>
+          }
 
-          <ng-container *ngIf="!soloMode">
+          @if (!soloMode) {
             <div>
               <div class="text-xs font-medium mb-2">Split with</div>
               <ion-list>
-                <ion-item *ngFor="let p of availableParticipants">
+                @for (p of availableParticipants; track p.id) {
+                <ion-item>
                   <ion-label>{{ p.name }}</ion-label>
                   <ion-checkbox
                     slot="end"
                     [checked]="!!splitWith[p.id]"
-                    (ionChange)="toggleShare(p.id, $event.detail.checked)"
+                    (ionChange)="toggleShare(p.id, $any($event).detail.checked)"
                   ></ion-checkbox>
                 </ion-item>
+                }
               </ion-list>
             </div>
 
@@ -182,24 +181,21 @@
               </ion-select>
             </ion-item>
 
-            <div *ngIf="splitMode !== 'equal'" class="space-y-2">
-              <div
-                class="text-xs text-gray-600 dark:text-gray-300"
-                *ngIf="splitMode==='percentage'"
-              >
+            @if (splitMode !== 'equal') {
+            <div class="space-y-2">
+              @if (splitMode==='percentage') {
+              <div class="text-xs text-gray-600 dark:text-gray-300">
                 Percentages must total 100%.
               </div>
-              <div
-                class="text-xs text-gray-600 dark:text-gray-300"
-                *ngIf="splitMode==='custom'"
-              >
+              }
+              @if (splitMode==='custom') {
+              <div class="text-xs text-gray-600 dark:text-gray-300">
                 Custom amounts must total the expense amount.
               </div>
+              }
               <ion-list>
-                <ion-item
-                  *ngFor="let p of availableParticipants"
-                  [hidden]="!splitWith[p.id]"
-                >
+                @for (p of availableParticipants; track p.id) {
+                <ion-item [hidden]="!splitWith[p.id]">
                   <ion-label>{{ p.name }}</ion-label>
                   <ion-input
                     slot="end"
@@ -210,9 +206,11 @@
                     placeholder="0"
                   ></ion-input>
                 </ion-item>
+                }
               </ion-list>
             </div>
-          </ng-container>
+            }
+          }
 
           <ion-button
             expand="block"

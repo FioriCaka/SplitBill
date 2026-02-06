@@ -38,7 +38,9 @@
         [disabled]="!name.trim() || !email.trim() || !password || password !== confirmPassword"
         >Create Account</ion-button
       >
-      <div *ngIf="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</div>
+      @if (errorMsg) {
+      <div class="text-sm text-red-600">{{ errorMsg }}</div>
+      }
     </div>
   </div>
 </ion-content>

@@ -26,7 +26,9 @@
         [disabled]="!email.trim() || !password"
         >Continue</ion-button
       >
-      <div *ngIf="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</div>
+      @if (errorMsg) {
+      <div class="text-sm text-red-600">{{ errorMsg }}</div>
+      }
       <div class="text-center text-sm text-gray-500 dark:text-gray-400">
         Don't have an account?
         <a routerLink="/register" class="text-indigo-600 dark:text-indigo-300"

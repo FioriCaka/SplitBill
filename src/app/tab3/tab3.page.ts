@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
   IonContent,
@@ -29,7 +29,8 @@ import {
   styleUrls: ['tab3.page.scss'],
   standalone: true,
   imports: [
-    CommonModule,
+    DatePipe,
+    DecimalPipe,
     RouterLink,
     IonContent,
     IonItem,

@@ -22,12 +22,11 @@
       <div class="text-sm text-gray-600 dark:text-gray-300">
         Current vs Estimated
       </div>
-      <div
-        *ngIf="unresolvedCount"
-        class="text-xs text-amber-600 dark:text-amber-400"
-      >
+      @if (unresolvedCount) {
+      <div class="text-xs text-amber-600 dark:text-amber-400">
         {{ unresolvedCount }} unresolved expense(s) not included until resolved.
       </div>
+      }
       <div class="h-56">
         <canvas #balanceChart></canvas>
       </div>
@@ -118,14 +117,15 @@
         </div>
       </ion-accordion>
     </ion-accordion-group>
+    @if (user) {
     <ion-button
       class="mt-3"
       expand="block"
       color="medium"
       (click)="logout()"
-      *ngIf="user"
       >Log out</ion-button
     >
+    }
   </div>
 
   <!-- Balance Modal -->

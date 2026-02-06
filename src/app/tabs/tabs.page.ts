@@ -14,7 +14,6 @@ import {
   IonLabel,
   IonRouterOutlet,
   GestureController,
-  IonContent,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { people, cash, statsChart, person } from 'ionicons/icons';
@@ -26,7 +25,6 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
   templateUrl: 'tabs.page.html',
   styleUrls: ['./tabs.page.scss'],
   imports: [
-    IonContent,
     IonTabs,
     IonTabBar,
     IonTabButton,

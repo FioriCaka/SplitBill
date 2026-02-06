@@ -22,51 +22,54 @@
           >Add</ion-button
         >
       </div>
-      <div class="text-xs" *ngIf="userInviteStatus==='searching'">
-        Looking up user...
-      </div>
-      <div class="text-xs text-green-600" *ngIf="userInviteStatus==='added'">
-        User added.
-      </div>
-      <div class="text-xs text-amber-600" *ngIf="userInviteStatus==='notfound'">
+      @if (userInviteStatus==='searching') {
+      <div class="text-xs">Looking up user...</div>
+      }
+      @if (userInviteStatus==='added') {
+      <div class="text-xs text-green-600">User added.</div>
+      }
+      @if (userInviteStatus==='notfound') {
+      <div class="text-xs text-amber-600">
         No registered user with that email.
       </div>
-      <ion-list
-        *ngIf="participants.length; else empty"
-        class="dark:bg-transparent"
-      >
-        <ion-item *ngFor="let p of participants">
+      }
+      @if (participants.length) {
+      <ion-list class="dark:bg-transparent">
+        @for (p of participants; track p.id) {
+        <ion-item>
           <ion-label>
             <div class="flex items-center gap-2">
               <span>{{ p.name }}</span>
+              @if (isMe(p)) {
               <span
-                *ngIf="isMe(p)"
                 class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
                 >You</span
               >
+              }
             </div>
-            <div
-              class="text-xs text-gray-500 dark:text-gray-400"
-              *ngIf="p.email"
-            >
+            @if (p.email) {
+            <div class="text-xs text-gray-500 dark:text-gray-400">
               {{ p.email }}
             </div>
+            }
           </ion-label>
+          @if (!isMe(p)) {
           <ion-button
             fill="clear"
             color="danger"
             slot="end"
             (click)="remove(p.id)"
-            *ngIf="!isMe(p)"
             >Remove</ion-button
           >
+          }
         </ion-item>
+        }
       </ion-list>
-      <ng-template #empty>
-        <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
-          No participants yet. Add someone by email.
-        </div>
-      </ng-template>
+      } @else {
+      <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+        No participants yet. Add someone by email.
+      </div>
+      }
     </div>
 
     <div
@@ -86,32 +89,36 @@
         >
       </div>
 
-      <ion-item *ngIf="myGroups.length">
+      @if (myGroups.length) {
+      <ion-item>
         <ion-label>My groups</ion-label>
         <ion-select
           [(ngModel)]="selectedGroupId"
           interface="popover"
           placeholder="Select a group"
-          (ionChange)="onSelectGroup($event.detail.value)"
+          (ionChange)="onSelectGroup($any($event).detail.value)"
         >
-          <ion-select-option *ngFor="let g of myGroups" [value]="g.id"
-            >{{ g.name }}</ion-select-option
-          >
+          @for (g of myGroups; track g.id) {
+          <ion-select-option [value]="g.id">{{ g.name }}</ion-select-option>
+          }
         </ion-select>
       </ion-item>
+      }
 
-      <div *ngIf="selectedGroupId">
+      @if (selectedGroupId) {
+      <div>
         <div class="text-sm font-semibold mb-2">Members</div>
         <ion-list class="dark:bg-transparent">
-          <ion-item *ngFor="let m of groupMembers()">
+          @for (m of groupMembers(); track m.id) {
+          <ion-item>
             <ion-label
               >{{ m.name }}
-              <span
-                class="text-xs text-gray-500 dark:text-gray-400"
-                *ngIf="m.email"
+              @if (m.email) {
+              <span class="text-xs text-gray-500 dark:text-gray-400"
                 >({{ m.email }})</span
-              ></ion-label
-            >
+              >
+              }
+            </ion-label>
             <ion-button
               fill="clear"
               color="danger"
@@ -120,6 +127,7 @@
               >Remove</ion-button
             >
           </ion-item>
+          }
         </ion-list>
 
         <ion-button expand="block" color="medium" (click)="leaveGroup()"
@@ -140,14 +148,16 @@
           >
         </div>
       </div>
+      }
 
+      @if (pendingInvites.length) {
       <div
-        *ngIf="pendingInvites.length"
         class="bg-amber-50 border border-amber-200 dark:bg-amber-900/30 dark:border-amber-300/30 rounded p-3 text-sm"
       >
         You have {{ pendingInvites.length }} pending invite(s). You can accept
         them in Summary.
       </div>
+      }
     </div>
   </div>
 </ion-content>

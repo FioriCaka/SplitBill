@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import {
   IonContent,
   IonButton,
@@ -20,7 +19,6 @@ import { Group, Invite, Participant, UUID } from '../core/models';
   styleUrls: ['tab1.page.scss'],
   standalone: true,
   imports: [
-    CommonModule,
     IonContent,
     IonButton,
     IonInput,

@@ -1,5 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -17,7 +16,6 @@ import { AuthService } from '../core/auth.service';
   templateUrl: './register.page.html',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     IonContent,
     IonItem,

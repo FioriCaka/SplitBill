@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   IonContent,
@@ -23,7 +23,8 @@ import { Expense, Participant, UUID, Group } from '../core/models';
   styleUrls: ['tab2.page.scss'],
   standalone: true,
   imports: [
-    CommonModule,
+    DatePipe,
+    DecimalPipe,
     FormsModule,
     IonContent,
     IonButton,
@@ -137,9 +138,12 @@ export class Tab2Page {
   }
 
   addExpense() {
-    const shareIds = Object.keys(this.splitWith).filter(
+    let shareIds = Object.keys(this.splitWith).filter(
       (id) => this.splitWith[id]
     );
+    if (!this.soloMode && this.splitMode === 'equal' && shareIds.length === 0) {
+      shareIds = this.availableParticipants.map((p) => p.id);
+    }
     const amt = parseFloat(this.amount);
     if (!this.description.trim() || !this.paidBy || !isFinite(amt) || amt <= 0)
       return;
