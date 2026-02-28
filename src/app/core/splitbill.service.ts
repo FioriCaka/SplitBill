@@ -946,6 +946,20 @@ export class SplitBillService {
     };
     this.state.groups!.push(g);
     this.save();
+    // Sync to backend so other users can see the group and expenses can be added to it
+    const base = this.auth?.apiBaseUrl;
+    const token = this.auth?.token;
+    if (base && token) {
+      this.http
+        .post(
+          `${base}/groups`,
+          { id: g.id, name: g.name },
+          { headers: this.authHeader() }
+        )
+        .subscribe({
+          error: (err) => console.warn('Failed to sync group to backend', err),
+        });
+    }
     return g;
   }
   addParticipantToGroup(groupId: UUID, participantId: UUID) {

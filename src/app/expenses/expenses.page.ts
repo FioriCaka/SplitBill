@@ -18,9 +18,9 @@ import { SplitBillService } from '../core/splitbill.service';
 import { Expense, Participant, UUID, Group } from '../core/models';
 
 @Component({
-  selector: 'app-tab2',
-  templateUrl: 'tab2.page.html',
-  styleUrls: ['tab2.page.scss'],
+  selector: 'app-expenses',
+  templateUrl: 'expenses.page.html',
+  styleUrls: ['expenses.page.scss'],
   standalone: true,
   imports: [
     DatePipe,
@@ -39,7 +39,7 @@ import { Expense, Participant, UUID, Group } from '../core/models';
     IonAccordion,
   ],
 })
-export class Tab2Page {
+export class ExpensesPage {
   participants: Participant[] = [];
   availableParticipants: Participant[] = [];
   groups: Group[] = [];

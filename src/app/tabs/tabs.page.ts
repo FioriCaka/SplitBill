@@ -46,7 +46,7 @@ export class TabsPage implements AfterViewInit {
   private router = inject(Router);
   private gestureCtrl = inject(GestureController);
 
-  private tabRoutes = ['tab1', 'tab2', 'tab3', 'profile'];
+  private tabRoutes = ['participants', 'expenses', 'summary', 'profile'];
   private currentTabIndex = 2; // Start with tab3 (Summary)
   private isAnimating = false;
   private swipeTarget: HTMLElement | null = null;
@@ -78,7 +78,7 @@ export class TabsPage implements AfterViewInit {
           // Get current tab index from route
           const currentRoute = this.router.url;
           const currentTab = currentRoute.split('/').pop();
-          this.currentTabIndex = this.tabRoutes.indexOf(currentTab || 'tab3');
+          this.currentTabIndex = this.tabRoutes.indexOf(currentTab || 'summary');
           if (this.currentTabIndex === -1) this.currentTabIndex = 2;
 
           return true;

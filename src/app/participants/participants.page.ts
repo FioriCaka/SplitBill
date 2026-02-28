@@ -14,9 +14,9 @@ import { SplitBillService } from '../core/splitbill.service';
 import { Group, Invite, Participant, UUID } from '../core/models';
 
 @Component({
-  selector: 'app-tab1',
-  templateUrl: 'tab1.page.html',
-  styleUrls: ['tab1.page.scss'],
+  selector: 'app-participants',
+  templateUrl: 'participants.page.html',
+  styleUrls: ['participants.page.scss'],
   standalone: true,
   imports: [
     IonContent,
@@ -30,7 +30,7 @@ import { Group, Invite, Participant, UUID } from '../core/models';
     FormsModule,
   ],
 })
-export class Tab1Page {
+export class ParticipantsPage {
   name = '';
   participants: Participant[] = [];
   me: Participant | undefined;

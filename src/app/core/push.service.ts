@@ -93,9 +93,9 @@ export class PushService {
     if (!this.isNativePlatform()) return true;
     if (!FirebaseStatus) {
       console.warn(
-        '[PushService] FirebaseStatus plugin unavailable; assuming Firebase ready'
+        '[PushService] FirebaseStatus plugin unavailable; skipping push registration (add google-services.json to enable)'
       );
-      return true;
+      return false;
     }
     try {
       const result = await FirebaseStatus.ensure();

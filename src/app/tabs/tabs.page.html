@@ -1,17 +1,28 @@
 <ion-tabs #ionTabs>
-  <ion-router-outlet></ion-router-outlet>
   <ion-tab-bar slot="bottom">
-    <ion-tab-button tab="tab1" routerLink="/tabs/tab1" routerDirection="root">
+    <ion-tab-button
+      tab="participants"
+      routerLink="/tabs/participants"
+      routerDirection="root"
+    >
       <ion-icon aria-hidden="true" name="people"></ion-icon>
       <ion-label>Participants</ion-label>
     </ion-tab-button>
 
-    <ion-tab-button tab="tab2" routerLink="/tabs/tab2" routerDirection="root">
+    <ion-tab-button
+      tab="expenses"
+      routerLink="/tabs/expenses"
+      routerDirection="root"
+    >
       <ion-icon aria-hidden="true" name="cash"></ion-icon>
       <ion-label>Expenses</ion-label>
     </ion-tab-button>
 
-    <ion-tab-button tab="tab3" routerLink="/tabs/tab3" routerDirection="root">
+    <ion-tab-button
+      tab="summary"
+      routerLink="/tabs/summary"
+      routerDirection="root"
+    >
       <ion-icon aria-hidden="true" name="stats-chart"></ion-icon>
       <ion-label>Summary</ion-label>
     </ion-tab-button>

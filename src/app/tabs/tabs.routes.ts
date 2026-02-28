@@ -9,19 +9,21 @@ export const routes: Routes = [
     canMatch: [authGuard],
     children: [
       {
-        path: 'tab1',
+        path: 'participants',
         loadComponent: () =>
-          import('../tab1/tab1.page').then((m) => m.Tab1Page),
+          import('../participants/participants.page').then(
+            (m) => m.ParticipantsPage
+          ),
       },
       {
-        path: 'tab2',
+        path: 'expenses',
         loadComponent: () =>
-          import('../tab2/tab2.page').then((m) => m.Tab2Page),
+          import('../expenses/expenses.page').then((m) => m.ExpensesPage),
       },
       {
-        path: 'tab3',
+        path: 'summary',
         loadComponent: () =>
-          import('../tab3/tab3.page').then((m) => m.Tab3Page),
+          import('../summary/summary.page').then((m) => m.SummaryPage),
       },
       {
         path: 'profile',
@@ -31,14 +33,14 @@ export const routes: Routes = [
 
       {
         path: '',
-        redirectTo: '/tabs/tab3',
+        redirectTo: '/tabs/summary',
         pathMatch: 'full',
       },
     ],
   },
   {
     path: '',
-    redirectTo: '/tabs/tab3',
+    redirectTo: '/tabs/summary',
     pathMatch: 'full',
   },
 ];

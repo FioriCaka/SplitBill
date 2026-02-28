@@ -33,11 +33,9 @@ export class LoginPage {
   private auth = inject(AuthService);
   private router = inject(Router);
 
-  token = localStorage.getItem('apiToken');
-
   constructor() {
-    if (this.token) {
-      this.router.navigateByUrl('/tabs/tab3');
+    if (this.auth.token) {
+      this.router.navigateByUrl('/tabs/summary');
     }
   }
 
@@ -54,8 +52,7 @@ export class LoginPage {
           res.user.starting_balance,
           (res.user as any).profile_image_url
         );
-        localStorage.setItem('apiToken', res.token);
-        this.router.navigateByUrl('/tabs/tab3');
+        this.router.navigateByUrl('/tabs/summary');
       },
       error: (err) => {
         console.error('Login failed', err);

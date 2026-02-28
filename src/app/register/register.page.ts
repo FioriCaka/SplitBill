@@ -51,7 +51,7 @@ export class RegisterPage {
           res.user.starting_balance,
           (res.user as any).profile_image_url
         );
-        this.router.navigateByUrl('/tabs/tab3');
+        this.router.navigateByUrl('/tabs/summary');
       },
       error: (err) => {
         console.error('Register failed', err);

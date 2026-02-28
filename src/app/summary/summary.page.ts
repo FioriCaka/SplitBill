@@ -24,9 +24,9 @@ import {
 } from '../core/models';
 
 @Component({
-  selector: 'app-tab3',
-  templateUrl: 'tab3.page.html',
-  styleUrls: ['tab3.page.scss'],
+  selector: 'app-summary',
+  templateUrl: 'summary.page.html',
+  styleUrls: ['summary.page.scss'],
   standalone: true,
   imports: [
     DatePipe,
@@ -43,7 +43,7 @@ import {
     IonAccordion,
   ],
 })
-export class Tab3Page {
+export class SummaryPage {
   balances: BalanceLine[] = [];
   settlements: SettlementSuggestion[] = [];
   participants: Record<string, Participant | undefined> = {};
